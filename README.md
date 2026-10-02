@@ -49,9 +49,23 @@ auto ui = app.on_render([&] {
 });
 ```
 
+The C++ configuration selects the QUIC listener:
+
+```cpp
+imgui_quic::Config config;
+config.address = "127.0.0.1";
+config.port = 4433;
+imgui_quic::Server app;
+app.init(config);
+```
+
+`app.init()` uses these defaults. Transport startup reads credentials from
+`IMGUI_QUIC_CERT`, `IMGUI_QUIC_KEY`, `IMGUI_QUIC_TOKEN_FILE` and
+`IMGUI_QUIC_ORIGINS`; without `IMGUI_QUIC_CERT`, it initializes the rendering
+core only. The development launcher supplies these variables to the example.
+
 Keep the callback handle alive and call `app.render()` from your application
-loop. The server owns the native ImGui context. Start the QUIC endpoint after
-initializing the server; server shutdown joins it automatically.
+loop. The server owns the native ImGui context. Server shutdown joins the QUIC endpoint automatically.
 See the [transport setup guide](tools/webtransport/README.md) for the public
 `imgui_quic_start()` API and production credentials.
 

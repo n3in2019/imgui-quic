@@ -14,8 +14,8 @@
 namespace imgui_quic {
 
 struct Config {
-    unsigned max_clients = 0;
-    unsigned max_clients_per_ip = 0;
+    std::string address = "127.0.0.1";
+    uint16_t port = 4433;
 };
 
 class Server {
@@ -30,7 +30,9 @@ class Server {
     Server(Server&& other) noexcept;
     Server& operator=(Server&& other) noexcept;
 
-    bool init(const Config& config);
+    // Uses IMGUI_QUIC_CERT/KEY/TOKEN_FILE/ORIGINS for transport credentials.
+    // Without IMGUI_QUIC_CERT, initializes the rendering core only.
+    bool init(const Config& config = {});
     void shutdown();
     void render();
 

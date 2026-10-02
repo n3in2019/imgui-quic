@@ -36,3 +36,8 @@ if(TARGET imgui_quic_dev)
         "-DDIRECTORY=${CMAKE_CURRENT_BINARY_DIR}/dev-credentials"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/dev_launcher.cmake")
 endif()
+
+add_executable(server_config_tests server_config_tests.cpp)
+target_link_libraries(server_config_tests PRIVATE imgui_quic::core)
+target_compile_options(server_config_tests PRIVATE -UNDEBUG)
+add_test(NAME server_config COMMAND server_config_tests)
