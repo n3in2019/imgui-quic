@@ -46,6 +46,7 @@ jobs:
         run: |
           node tests/browser/draw_ip.mjs
           node tests/browser/webtransport.mjs
+          node tests/browser/dev_server.mjs
           node tests/browser/clipboard_shortcuts.mjs
           node tests/browser/large_clipboard_batch.mjs
           node tests/browser/media_viewer.mjs

@@ -16,14 +16,15 @@ cmake --build build -j4
 ```
 
 Open the URL in `build/webtransport_dev/url.txt`. The status indicator says
-**connected (WebTransport)**. The launcher prepares credentials and then replaces
-itself with the native executable. The native process listens on UDP 127.0.0.1:4433. Ctrl-C shuts it down gracefully.
-Serve `frontend/` independently; for local development, run
-`npx --yes http-server frontend -a 127.0.0.1 -p 8888 -c-1` in another terminal.
-Use `--page-url`, `--quic-port`, `--build-directory`, or `--credentials` to change
-the local launcher settings. A QUIC startup failure makes the example exit.
+**connected (WebTransport)**. The launcher prepares credentials, serves the frontend
+on TCP 127.0.0.1:4433 and supervises the native QUIC example on UDP 127.0.0.1:4433.
+Ctrl-C stops both. Use `--address` and `--port` to select the listening interface
+and shared TCP/UDP port. `--frontend` selects the asset directory; `--page-url`
+uses an external frontend host instead of starting the local HTTP server.
+`--build-directory` and `--credentials` select build and credential directories.
+A QUIC startup failure stops the launcher and its HTTP listener.
 
-The setup script creates an ECDSA certificate valid for 13 days, its SHA-256 pin,
+The launcher creates an ECDSA certificate valid for 13 days, its SHA-256 pin,
 and a random token with private file permissions. Existing credentials are
 reused. Remove only those development files and rerun to rotate expired
 credentials. No browser flags or system trust changes are needed when the
@@ -34,7 +35,7 @@ SHA-256 digits). The fragment is not sent with the HTTP page request but remains
 a credential in browser history. Do not share or log the launch URL. The token
 travels in the first encrypted application record.
 
-With existing certificates, the example runs directly without Python:
+With existing certificates, the example runs directly:
 
 ```bash
 IMGUI_QUIC_CERT=build/webtransport_dev/cert.pem \

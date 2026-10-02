@@ -14,8 +14,7 @@ node tests/browser/media_viewer.mjs
 ```
 
 Run `./build/examples/imgui_quic_dev` and open the
-URL in `build/webtransport_dev/url.txt` for visual verification. Serve `frontend/`
-separately, for example with `npx --yes http-server frontend -a 127.0.0.1 -p 8888 -c-1`. CMake fetches pinned Dear
+URL in `build/webtransport_dev/url.txt` for visual verification. The launcher serves `frontend/` over HTTP. CMake fetches pinned Dear
 ImGui into ignored `third_party/`. Requires C++17, CMake 3.21+, Git;
 frontend tests require Node 22+.
 
@@ -24,7 +23,7 @@ frontend tests require Node 22+.
 - `src/`: State/input scheduling, native ImGui backend and I/P
   draw-data transport. `src/draw_protocol.*` serializes geometry and deltas.
 - `frontend/`: WebGL renderer, exact I/P decoding, input, clipboard and media.
-  Host these files separately; reload the page after edits.
+  The development launcher serves these files; reload the page after edits.
 - `include/imgui_quic.h`: small language-neutral lifecycle API only.
 - `include/imgui_quic.hpp`: thin C++ wrapper. Applications call native ImGui;
   do not add API interception or duplicate the ImGui runtime.
@@ -110,7 +109,7 @@ regressions and verify end-to-end after behavior changes.
 `src/quic.cpp` connects it directly to `State`.
 `include/imgui_quic_transport.h` adds a separate transport-start API; main lifecycle
 shutdown stops and joins native QUIC before releasing state. Clang/C++20 and ICU development files are
-required by the default Linux x86-64/AArch64 build; Bazel is downloaded with a pinned hash. The launcher prepares credentials then execs
+required by the default Linux x86-64/AArch64 build; Bazel is downloaded with a pinned hash. The launcher prepares credentials, serves frontend assets and supervises
 the native example.
 
 Run `node tests/browser/webtransport.mjs`,

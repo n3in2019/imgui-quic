@@ -23,7 +23,7 @@ cmake --build build
 ```
 
 The first CMake configure fetches the pinned Dear ImGui source into an ignored
-local directory. Frontend files are served separately; changes require a page reload.
+local directory. The development launcher serves frontend files; changes require a page reload.
 For browser verification, prepare development certificates and use
 `build/examples/imgui_quic_dev` as described in the [native transport guide](tools/webtransport/README.md).
 The browser requires its configured WebTransport launch URL.

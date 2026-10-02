@@ -20,15 +20,17 @@ cmake --build build -j 6
 ./build/examples/imgui_quic_dev --example minimal
 ```
 
-In another terminal, serve the frontend with your preferred static host. For local development:
+Open the connection URL saved to `build/webtransport_dev/url.txt`. The launcher
+serves the frontend and runs the native example. Ctrl-C stops both services.
+The URL contains a private development token; keep it local.
 
-```bash
-npx --yes http-server frontend -a 127.0.0.1 -p 8888 -c-1
-```
+`--address 127.0.0.1 --port 4433` selects the listening address and port:
+HTTP uses TCP and WebTransport uses UDP on the same port. Use `--address 0.0.0.0`
+to listen on all IPv4 interfaces. Remote browsers require an HTTPS frontend;
+use `--page-url https://your-host/` with an external HTTPS host and configure
+trusted transport credentials as described in the transport setup guide.
+`--frontend path` selects the static asset directory.
 
-Open the URL saved to `build/webtransport_dev/url.txt`. It contains a private
-development token; keep it local. The native process listens only on UDP `127.0.0.1:4433`.
-The frontend is hosted separately. Ctrl-C stops each development process.
 Use `--example demo` for docking, widgets, clipboard and media examples.
 
 With CMake 3.21+, `cmake --preset dev`, `cmake --build --preset dev` and
@@ -103,12 +105,13 @@ interaction incurs network latency. The browser uses WebTransport exclusively.
 ctest --test-dir build --output-on-failure
 node tests/browser/draw_ip.mjs
 node tests/browser/webtransport.mjs
+node tests/browser/dev_server.mjs
 node tests/browser/clipboard_shortcuts.mjs
 node tests/browser/large_clipboard_batch.mjs
 node tests/browser/media_viewer.mjs
 ```
 
-Browser regressions require Node 22+. Reload the separately hosted frontend after editing its assets.
+Browser regressions require Node 22+. Reload the frontend after editing its assets.
 See [CONTRIBUTING](CONTRIBUTING.md) for binding generation, package installation
 and validation; [transport design](docs/transport.md) for wire semantics, media
 and tradeoffs; and [benchmarks](tools/benchmarks/README.md) for measurement.
