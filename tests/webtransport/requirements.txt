@@ -1,0 +1,2 @@
+# Independent native QUIC interoperability client.
+aioquic==1.3.0

@@ -1,0 +1,4 @@
+IMGW_QUIC_2 {
+    global: imgw_quic_start; imgw_quic_stop;
+    local: *;
+};

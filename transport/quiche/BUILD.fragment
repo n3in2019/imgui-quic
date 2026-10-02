@@ -1,0 +1,16 @@
+# Appended to the pinned upstream quiche/BUILD.bazel in the private build copy.
+cc_binary(
+    name = "libimgui_quic_quiche.so",
+    srcs = ["imgw/server.cc", "imgw/bridge.h", "imgw/protocol.h"],
+    linkshared = True,
+    linkstatic = True,
+    linkopts = ["-Wl,-soname,libimgui_quic_quiche.so", "-Wl,-z,start-stop-visibility=hidden", "-Wl,--version-script=$(location imgw/exports.map)"],
+    additional_linker_inputs = ["imgw/exports.map"],
+    deps = [
+        ":io_tool_support", ":quiche_core", ":quiche_tool_support",
+        "@boringssl//:crypto", "@com_google_protobuf//:protobuf",
+        "@com_google_protobuf//:struct_cc_proto", "@com_google_protobuf//:json",
+        "@com_google_absl//absl/status", "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings", "@com_google_absl//absl/time", "@com_google_absl//absl/types:span",
+    ],
+)

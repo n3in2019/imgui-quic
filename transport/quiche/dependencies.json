@@ -1,0 +1,8 @@
+{
+  "quiche_commit": "121d3bf39d6c4bbf324a4e1f45f92de0e68387d7",
+  "bazel_version": "8.2.1",
+  "bazel_sha256": {
+    "x86_64": "7ff2b6a675b59a791d007c526977d5262ade8fa52efc8e0d1ff9e18859909fc0",
+    "arm64": "1f50df607751a56ace7775872ffb5dff4c15c25c11a2df30b7b0035ef53a9937"
+  }
+}

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ImGuiQuic Debug</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <canvas id="canvas" tabindex="0"></canvas>
+    <div id="status" class="disconnected">connecting...</div>
+    <button id="media-open" type="button">Open media file</button>
+    <dialog id="media-panel" aria-labelledby="media-title">
+        <header><h1 id="media-title">Images &amp; video</h1><button id="media-close" type="button" aria-label="Close media viewer">Close</button></header>
+        <p>Choose a file, drop it here, or paste an image. It will appear inside ImGui. Files stay in this browser.</p>
+        <label for="media-file">Open image or video</label>
+        <input id="media-file" type="file" accept="image/*,video/*">
+        <p id="media-error" role="alert"></p>
+        <div id="media-preview"></div>
+        <p id="media-info" aria-live="polite"></p>
+    </dialog>
+    <div id="media-decoders" hidden aria-hidden="true"></div>
+    <script src="media.js"></script>
+    <script src="imgui_quic_draw.js"></script>
+    <script src="imgui_quic_transport.js"></script>
+    <script src="imgui_quic.js"></script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+name: CI
+
+on:
+  push:
+    branches: [development, main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install QUICHE compiler dependencies
+        run: sudo apt-get update && sudo apt-get install -y clang libicu-dev openssl python3-venv
+
+      - name: Configure C++ core (fetches pinned Dear ImGui)
+        run: cmake -B build -DIMGUI_QUIC_BUILD_EXAMPLES=ON -DIMGUI_QUIC_BUILD_TESTS=ON
+
+      - name: Build C++ core and example
+        run: cmake --build build --parallel
+
+      - name: Run C++ core tests
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Run draw transport and frontend regressions
+        run: |
+          node tests/browser/draw_ip.mjs
+          node tests/browser/webtransport.mjs
+          node tests/browser/clipboard_shortcuts.mjs
+          node tests/browser/large_clipboard_batch.mjs
+          node tests/browser/media_viewer.mjs
+
+      - name: Test native WebTransport
+        run: |
+          python3 -m venv build/webtransport_venv
+          build/webtransport_venv/bin/pip install -r tests/webtransport/requirements.txt
+          ./build/examples/imgui_quic_dev --prepare-only
+          build/webtransport_venv/bin/python tests/webtransport/test_native.py
+
+      - name: Check frontend JavaScript
+        run: |
+          node --check frontend/imgui_quic_draw.js
+          node --check frontend/imgui_quic_transport.js
+          node --check frontend/imgui_quic.js
+
+      - name: Check generator sources
+        run: |
+          python3 -m py_compile tools/dear_bindings/generate.py
+
+      - name: Check whitespace
+        run: git diff --check
+
+  vcpkg-port:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install QUICHE compiler dependencies
+        run: sudo apt-get update && sudo apt-get install -y clang libicu-dev openssl python3-venv
+
+      # Builds the port from the checkout (IMGUI_QUIC_LOCAL_SOURCE_DIR, the
+      # portfile's pre-release validation branch) and consumes it through a
+      # fresh manifest project, the way end users do.
+      - name: Exercise the vcpkg port with a manifest consumer
+        env:
+          IMGUI_QUIC_LOCAL_SOURCE_DIR: ${{ github.workspace }}
+        run: |
+          set -eux
+          D="$RUNNER_TEMP/port-consumer"
+          mkdir -p "$D"
+          cat > "$D/CMakeLists.txt" <<'EOF'
+          cmake_minimum_required(VERSION 3.21)
+          project(imgui_quic_port_consumer LANGUAGES CXX)
+          set(CMAKE_CXX_STANDARD 17)
+          set(CMAKE_CXX_STANDARD_REQUIRED ON)
+          find_package(imgui_quic CONFIG REQUIRED)
+          add_executable(consumer main.cpp)
+          target_link_libraries(consumer PRIVATE imgui_quic::core)
+          EOF
+          cat > "$D/vcpkg.json" <<'EOF'
+          {
+            "name": "imgui-quic-port-consumer",
+            "version": "0.0.0",
+            "dependencies": [ "imgui-quic" ]
+          }
+          EOF
+          cat > "$D/vcpkg-configuration.json" <<EOF
+          {
+            "overlay-ports": [ "${{ github.workspace }}/ports" ]
+          }
+          EOF
+          cat > "$D/main.cpp" <<'EOF'
+          #include <chrono>
+          #include <cstdio>
+          #include <thread>
+
+          #include "imgui.h"
+          #include "imgui_quic.hpp"
+
+          int main() {
+              imgui_quic::Config config;
+              imgui_quic::Server app;
+              if (!app.init(config)) {
+                  return 1;
+              }
+              bool running = true;
+              auto render = app.on_render([&]() {
+                  ImGui::Begin("port consumer", &running);
+                  ImGui::TextUnformatted("installed via vcpkg");
+                  ImGui::End();
+              });
+              for (int i = 0; running && render && i < 10; ++i) {
+                  app.render();
+                  std::this_thread::sleep_for(std::chrono::milliseconds(16));
+              }
+              std::puts("vcpkg port consumer ok");
+              return 0;
+          }
+          EOF
+          cmake -S "$D" -B "$D/build" \
+              -DCMAKE_TOOLCHAIN_FILE="$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
+          cmake --build "$D/build"
+          "$D/build/consumer"

@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import {readFileSync} from 'node:fs';
+const source=readFileSync(new URL('../../frontend/imgui_quic.js',import.meta.url),'utf8');
+const sent=[];
+const context=vm.createContext({TextEncoder,queueMicrotask:()=>{},sent});
+vm.runInContext(source.slice(source.indexOf('let connection = null;'),source.indexOf('function sendF32F32')),context);
+vm.runInContext(`clientId=1; connection={readyState:1,send:data=>sent.push(new Uint8Array(data))};
+sendClipboardText('x'.repeat(70000));
+sendBytes(new Uint8Array([0x14,1,0,0,0,55,2])); flushSends();`,context);
+assert.equal(sent.length,2);
+assert.equal(sent[0][0],0x18);
+assert.equal(new DataView(sent[0].buffer).getUint32(5,true),70000);
+assert.equal(sent[1][0],0x14,'paste key remains after clipboard text');
+sent.length=0;
+vm.runInContext(`sendClipboardText('short'); sendBytes(new Uint8Array([0x14,1,0,0,0,55,2])); flushSends();`,context);
+assert.equal(sent.length,1);assert.equal(sent[0][0],0x19);
+console.log('large and small clipboard flushes preserve wire lengths and FIFO');

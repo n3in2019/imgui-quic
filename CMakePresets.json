@@ -1,0 +1,58 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "dev",
+      "displayName": "Native WebTransport development",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "IMGUI_QUIC_BUILD_EXAMPLES": "ON",
+        "IMGUI_QUIC_BUILD_TESTS": "ON",
+        "IMGUI_QUIC_NATIVE_QUIC": "ON"
+      }
+    },
+    {
+      "name": "core-tests",
+      "inherits": "dev",
+      "binaryDir": "${sourceDir}/build/core-tests",
+      "cacheVariables": {
+        "IMGUI_QUIC_NATIVE_QUIC": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "dev",
+      "configurePreset": "dev",
+      "jobs": 6
+    },
+    {
+      "name": "core-tests",
+      "configurePreset": "core-tests",
+      "jobs": 6
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "dev",
+      "configurePreset": "dev",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "core-tests",
+      "configurePreset": "core-tests",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}
