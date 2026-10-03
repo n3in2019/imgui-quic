@@ -23,7 +23,7 @@ QUIC = 19443
 def command(*args):
     subprocess.run(args,check=True,stdout=subprocess.DEVNULL)
 
-def network(delay, jitter, loss, rate, seed):
+def network(delay, jitter, loss, rate, seed, ports=None):
     subprocess.run(['tc','qdisc','del','dev','lo','root'],stderr=subprocess.DEVNULL)
     command('tc','qdisc','add','dev','lo','root','handle','1:','prio','bands','3')
     args = ['tc','qdisc','add','dev','lo','parent','1:3','handle','30:','netem','limit','1000']
@@ -35,7 +35,7 @@ def network(delay, jitter, loss, rate, seed):
         args += ['rate',f'{rate}mbit']
     args += ['seed',str(seed)]
     command(*args)
-    for protocol,port in [('udp',QUIC)]:
+    for protocol,port in (ports or [('udp',QUIC)]):
         for direction in ('src_port','dst_port'):
             command('tc','filter','add','dev','lo','parent','1:','protocol','ip','prio','1',
                     'flower','ip_proto',protocol,direction,str(port),'flowid','1:3')
@@ -53,7 +53,7 @@ class Meter:
         self.active = False
         self.frame_ages=[]; self.decode=[]; self.input_latencies=[]; self.display_ages=[]
         self.last_stamp=0; self.last_arrival=0; self.gaps=[]
-        self.inputs={}; self.frames=0; self.payload=0; self.types={13:0,14:0,15:0}
+        self.inputs={}; self.frames=0; self.payload=0; self.types={13:0,14:0,15:0,34:0,35:0,38:0,39:0}
     def observe(self,client,packet,elapsed):
         decoded = client.cache[client.last_frame]
         stamp = struct.unpack_from('<I',decoded,57)[0] | (struct.unpack_from('<I',decoded,77)[0]<<32)
@@ -144,6 +144,7 @@ async def run_case(scene, seconds, host_path):
             client.start('http://localhost', (credentials/'token').read_text().strip())
             result = await measure(client, meter, seconds, host.pid)
             result['datagrams'] = client.datagrams
+            result['quantized_frames'] = client.quantized_frames
             return result
     finally:
         if host.returncode is None: host.terminate()
@@ -162,10 +163,11 @@ async def main(args):
     results=[]
     for trial in range(args.trials):
         for name,delay,jitter,loss,rate in profiles:
-            for scene in (0 if s=='moving' else 1 for s in args.scenes):
+            for scene in args.scenes:
                 network(delay,jitter,loss,rate,42+trial)
                 metadata=dict(backend='quiche',seconds=args.seconds,profile=name,
-                              scene='moving' if scene==0 else 'dynamic',transport='WT',trial=trial)
+                              scene=scene,transport='WT',trial=trial,
+                              compression=os.environ.get('IMGUI_QUIC_TEST_LZ4','1')=='1')
                 try:result={**metadata,**await run_case(scene,args.seconds,args.host)}
                 except Exception as error:result={**metadata,'error':repr(error)}
                 results.append(result)
@@ -176,7 +178,7 @@ async def main(args):
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--scenes',nargs='+',choices=['moving','dynamic'],default=['moving','dynamic'])
+    parser.add_argument('--scenes',nargs='+',choices=['moving','dynamic','plots','tables','topology','dense'],default=['moving','dynamic'])
     parser.add_argument('--host',default='build/transport_benchmark_host')
     parser.add_argument('--seconds',type=float,default=8)
     parser.add_argument('--trials',type=int,default=2)

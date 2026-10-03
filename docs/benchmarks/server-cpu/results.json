@@ -1,0 +1,927 @@
+{
+  "requested_seconds": 8,
+  "warmup_seconds": 2,
+  "trials": 3,
+  "fps_target": 30,
+  "cpu_basis": "100% equals one logical CPU; /proc/pid/stat user+system time summed across process threads",
+  "server_affinity": 0,
+  "receiver_affinity": 1,
+  "system": "Linux-7.2.8-1-cachyos-x86_64-with-glibc2.44",
+  "cpuinfo": "processor\t: 0\nvendor_id\t: AuthenticAMD\ncpu family\t: 26\nmodel\t\t: 36\nmodel name\t: AMD Ryzen AI 9 HX 470 w/ Radeon 890M\nstepping\t: 0\nmicrocode\t: 0xb204037\ncpu MHz\t\t: 5217.045\ncache size\t: 1024 KB\nphysical id\t: 0\nsiblings\t: 24\ncore id\t\t: 0\ncpu cores\t: 12\napicid\t\t: 0\ninitial apicid\t: 0\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 16\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good amd_lbr_v2 nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpuid_fault cpb cat_l3 cdp_l3 hw_pstate ssbd mba perfmon_v2 ibrs ibpb stibp ibrs_enhanced vmmcall fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid cqm rdt_a avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local user_shstk avx_vnni avx512_bf16 clzero irperf xsaveerptr rdpru wbnoinvd cppc arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif x2avic v_spec_ctrl vnmi avx512vbmi umip pku ospke avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid bus_lock_detect movdiri movdir64b overflow_recov succor smca fsrm avx512_vp2intersect flush_l1d amd_lbr_pmc_freeze\nbugs\t\t: sysret_ss_attrs spectre_v1 spectre_v2 spec_store_bypass srso spectre_v2_user vmscape\nbogomips\t: 3992.82\nTLB size\t: 192 4K pages\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 48 bits physical, 48 bits virtual\npower management: ts ttp tm hwpstate cpb eff_freq_ro [13] [14]",
+  "binary_sha256": {
+    "stock": "4324a0bd2a69383c31ac4f52ff5d4c83b5909300e205f1d4907d0fce3b98acb6",
+    "sse2": "0a2d2fa9a7248e86d95e0247250fd66dc433540b13a07ebcc4d4aa29e24621cf"
+  },
+  "results": [
+    {
+      "scene": "plots",
+      "clients": 1,
+      "elapsed_s": 8.026830314003746,
+      "server_cpu_seconds": 0.2,
+      "server_cpu_pct_one_core": 2.491643552637167,
+      "server_rss_peak_MiB": 15.4296875,
+      "client_fps": [
+        29.899722631646004
+      ],
+      "client_payload_KiB_s": [
+        246.62222186369942
+      ],
+      "client_handle_p50_us": [
+        32874.469
+      ],
+      "client_quantized_frames": [
+        301
+      ],
+      "trial": 0,
+      "variant": "sse2"
+    },
+    {
+      "scene": "dynamic",
+      "clients": 4,
+      "elapsed_s": 8.091889231000096,
+      "server_cpu_seconds": 0.09999999999999999,
+      "server_cpu_pct_one_core": 1.235805349594989,
+      "server_rss_peak_MiB": 12.29296875,
+      "client_fps": [
+        30.030069995158232,
+        30.030069995158232,
+        30.030069995158232,
+        30.030069995158232
+      ],
+      "client_payload_KiB_s": [
+        27.028293973627356,
+        27.028293973627356,
+        27.028293973627356,
+        27.028293973627356
+      ],
+      "client_handle_p50_us": [
+        1032.254,
+        873.865,
+        850.6,
+        858.255
+      ],
+      "client_quantized_frames": [
+        307,
+        306,
+        305,
+        304
+      ],
+      "trial": 1,
+      "variant": "sse2"
+    },
+    {
+      "scene": "dynamic",
+      "clients": 4,
+      "elapsed_s": 8.092021636999561,
+      "server_cpu_seconds": 0.11,
+      "server_cpu_pct_one_core": 1.3593636415533223,
+      "server_rss_peak_MiB": 12.51171875,
+      "client_fps": [
+        30.029578627041573,
+        30.029578627041573,
+        30.029578627041573,
+        30.029578627041573
+      ],
+      "client_payload_KiB_s": [
+        27.068762968139833,
+        27.068762968139833,
+        27.068762968139833,
+        27.068762968139833
+      ],
+      "client_handle_p50_us": [
+        1019.928,
+        870.227,
+        848.986,
+        850.7
+      ],
+      "client_quantized_frames": [
+        307,
+        306,
+        305,
+        304
+      ],
+      "trial": 0,
+      "variant": "sse2"
+    },
+    {
+      "scene": "dense",
+      "clients": 1,
+      "elapsed_s": 8.036871210002573,
+      "server_cpu_seconds": 0.31,
+      "server_cpu_pct_one_core": 3.85722244266125,
+      "server_rss_peak_MiB": 18.3046875,
+      "client_fps": [
+        29.986793828431008
+      ],
+      "client_payload_KiB_s": [
+        1672.8285505502329
+      ],
+      "client_handle_p50_us": [
+        18363.073
+      ],
+      "client_quantized_frames": [
+        302
+      ],
+      "trial": 1,
+      "variant": "sse2"
+    },
+    {
+      "scene": "dynamic",
+      "clients": 4,
+      "elapsed_s": 8.089785403004498,
+      "server_cpu_seconds": 0.12,
+      "server_cpu_pct_one_core": 1.483352079468421,
+      "server_rss_peak_MiB": 12.546875,
+      "client_fps": [
+        30.037879609235524,
+        30.037879609235524,
+        30.037879609235524,
+        30.037879609235524
+      ],
+      "client_payload_KiB_s": [
+        27.094835688545412,
+        27.094835688545412,
+        27.094835688545412,
+        27.094835688545412
+      ],
+      "client_handle_p50_us": [
+        1023.144,
+        894.502,
+        849.284,
+        841.7
+      ],
+      "client_quantized_frames": [
+        307,
+        306,
+        305,
+        304
+      ],
+      "trial": 1,
+      "variant": "stock"
+    },
+    {
+      "scene": "dense",
+      "clients": 1,
+      "elapsed_s": 8.039779755999916,
+      "server_cpu_seconds": 0.32999999999999996,
+      "server_cpu_pct_one_core": 4.104590051160643,
+      "server_rss_peak_MiB": 18.16796875,
+      "client_fps": [
+        29.97594552514288
+      ],
+      "client_payload_KiB_s": [
+        1672.2230080328757
+      ],
+      "client_handle_p50_us": [
+        18499.126
+      ],
+      "client_quantized_frames": [
+        302
+      ],
+      "trial": 0,
+      "variant": "stock"
+    },
+    {
+      "scene": "dynamic",
+      "clients": 1,
+      "elapsed_s": 8.084790648004855,
+      "server_cpu_seconds": 0.07,
+      "server_cpu_pct_one_core": 0.865823285322477,
+      "server_rss_peak_MiB": 12.22265625,
+      "client_fps": [
+        29.932747864005627
+      ],
+      "client_payload_KiB_s": [
+        26.981000706719723
+      ],
+      "client_handle_p50_us": [
+        1040.284
+      ],
+      "client_quantized_frames": [
+        303
+      ],
+      "trial": 2,
+      "variant": "stock"
+    },
+    {
+      "scene": "dynamic",
+      "clients": 1,
+      "elapsed_s": 8.090770537004573,
+      "server_cpu_seconds": 0.07,
+      "server_cpu_pct_one_core": 0.8651833552792357,
+      "server_rss_peak_MiB": 12.1953125,
+      "client_fps": [
+        30.034222190407753
+      ],
+      "client_payload_KiB_s": [
+        27.122315320135492
+      ],
+      "client_handle_p50_us": [
+        1018.901
+      ],
+      "client_quantized_frames": [
+        304
+      ],
+      "trial": 2,
+      "variant": "sse2"
+    },
+    {
+      "scene": "plots",
+      "clients": 1,
+      "elapsed_s": 8.105333661005716,
+      "server_cpu_seconds": 0.24,
+      "server_cpu_pct_one_core": 2.9610132048557842,
+      "server_rss_peak_MiB": 15.96484375,
+      "client_fps": [
+        28.99325429754622
+      ],
+      "client_payload_KiB_s": [
+        240.59593757927158
+      ],
+      "client_handle_p50_us": [
+        33581.747
+      ],
+      "client_quantized_frames": [
+        295
+      ],
+      "trial": 1,
+      "variant": "stock"
+    },
+    {
+      "scene": "dense",
+      "clients": 1,
+      "elapsed_s": 8.034526977993664,
+      "server_cpu_seconds": 0.3,
+      "server_cpu_pct_one_core": 3.7338850292206534,
+      "server_rss_peak_MiB": 18.41015625,
+      "client_fps": [
+        29.995543068072582
+      ],
+      "client_payload_KiB_s": [
+        1673.31663133512
+      ],
+      "client_handle_p50_us": [
+        18703.811
+      ],
+      "client_quantized_frames": [
+        302
+      ],
+      "trial": 2,
+      "variant": "sse2"
+    },
+    {
+      "scene": "dynamic",
+      "clients": 8,
+      "elapsed_s": 8.100763333000941,
+      "server_cpu_seconds": 0.18,
+      "server_cpu_pct_one_core": 2.2220128227510965,
+      "server_rss_peak_MiB": 13.0703125,
+      "client_fps": [
+        29.997173107139798,
+        29.997173107139798,
+        29.997173107139798,
+        29.997173107139798,
+        29.997173107139798,
+        29.997173107139798,
+        29.997173107139798,
+        29.997173107139798
+      ],
+      "client_payload_KiB_s": [
+        27.04292797723863,
+        27.04292797723863,
+        27.04292797723863,
+        27.04292797723863,
+        27.04292797723863,
+        27.04292797723863,
+        27.04292797723863,
+        27.796136316895144
+      ],
+      "client_handle_p50_us": [
+        1085.888,
+        906.85,
+        880.239,
+        882.803,
+        862.073,
+        861.633,
+        875.059,
+        867.704
+      ],
+      "client_quantized_frames": [
+        311,
+        310,
+        309,
+        308,
+        307,
+        306,
+        305,
+        304
+      ],
+      "trial": 1,
+      "variant": "stock"
+    },
+    {
+      "scene": "dynamic",
+      "clients": 1,
+      "elapsed_s": 8.090820262994384,
+      "server_cpu_seconds": 0.06999999999999999,
+      "server_cpu_pct_one_core": 0.8651780378828146,
+      "server_rss_peak_MiB": 12.2421875,
+      "client_fps": [
+        30.034037600789137
+      ],
+      "client_payload_KiB_s": [
+        27.06771289947663
+      ],
+      "client_handle_p50_us": [
+        1037.903
+      ],
+      "client_quantized_frames": [
+        304
+      ],
+      "trial": 0,
+      "variant": "stock"
+    },
+    {
+      "scene": "plots",
+      "clients": 1,
+      "elapsed_s": 8.003163639994455,
+      "server_cpu_seconds": 0.22000000000000003,
+      "server_cpu_pct_one_core": 2.7489129286397107,
+      "server_rss_peak_MiB": 15.8671875,
+      "client_fps": [
+        29.738239864375046
+      ],
+      "client_payload_KiB_s": [
+        245.8491888420094
+      ],
+      "client_handle_p50_us": [
+        32976.766
+      ],
+      "client_quantized_frames": [
+        298
+      ],
+      "trial": 0,
+      "variant": "stock"
+    },
+    {
+      "scene": "dense",
+      "clients": 1,
+      "elapsed_s": 8.037514159994316,
+      "server_cpu_seconds": 0.35,
+      "server_cpu_pct_one_core": 4.354580197719335,
+      "server_rss_peak_MiB": 18.3046875,
+      "client_fps": [
+        29.611145344491476
+      ],
+      "client_payload_KiB_s": [
+        1651.8607902765907
+      ],
+      "client_handle_p50_us": [
+        18626.278
+      ],
+      "client_quantized_frames": [
+        298
+      ],
+      "trial": 2,
+      "variant": "stock"
+    },
+    {
+      "scene": "plots",
+      "clients": 1,
+      "elapsed_s": 8.075321608004742,
+      "server_cpu_seconds": 0.22999999999999998,
+      "server_cpu_pct_one_core": 2.8481837772505583,
+      "server_rss_peak_MiB": 15.84375,
+      "client_fps": [
+        29.47251039067969
+      ],
+      "client_payload_KiB_s": [
+        243.73968774648264
+      ],
+      "client_handle_p50_us": [
+        33120.59
+      ],
+      "client_quantized_frames": [
+        299
+      ],
+      "trial": 2,
+      "variant": "stock"
+    },
+    {
+      "scene": "dynamic",
+      "clients": 4,
+      "elapsed_s": 8.09782376200019,
+      "server_cpu_seconds": 0.1,
+      "server_cpu_pct_one_core": 1.234899683409505,
+      "server_rss_peak_MiB": 12.41796875,
+      "client_fps": [
+        30.00806230685097,
+        30.00806230685097,
+        30.00806230685097,
+        30.00806230685097
+      ],
+      "client_payload_KiB_s": [
+        27.03670553931906,
+        27.03670553931906,
+        27.03670553931906,
+        27.03670553931906
+      ],
+      "client_handle_p50_us": [
+        1014.443,
+        918.768,
+        860.877,
+        862.119
+      ],
+      "client_quantized_frames": [
+        307,
+        306,
+        305,
+        304
+      ],
+      "trial": 2,
+      "variant": "stock"
+    },
+    {
+      "scene": "plots",
+      "clients": 1,
+      "elapsed_s": 8.101640321998275,
+      "server_cpu_seconds": 0.21000000000000002,
+      "server_cpu_pct_one_core": 2.592067675848184,
+      "server_rss_peak_MiB": 15.93359375,
+      "client_fps": [
+        28.51274443433002
+      ],
+      "client_payload_KiB_s": [
+        237.14924079579612
+      ],
+      "client_handle_p50_us": [
+        34179.076
+      ],
+      "client_quantized_frames": [
+        290
+      ],
+      "trial": 1,
+      "variant": "sse2"
+    },
+    {
+      "scene": "dynamic",
+      "clients": 1,
+      "elapsed_s": 8.092303791010636,
+      "server_cpu_seconds": 0.08,
+      "server_cpu_pct_one_core": 0.9885936324939788,
+      "server_rss_peak_MiB": 12.13671875,
+      "client_fps": [
+        30.028531587004608
+      ],
+      "client_payload_KiB_s": [
+        27.08809305559002
+      ],
+      "client_handle_p50_us": [
+        1097.032
+      ],
+      "client_quantized_frames": [
+        304
+      ],
+      "trial": 1,
+      "variant": "sse2"
+    },
+    {
+      "scene": "dynamic",
+      "clients": 8,
+      "elapsed_s": 8.00292066700058,
+      "server_cpu_seconds": 0.15999999999999998,
+      "server_cpu_pct_one_core": 1.9992700997243107,
+      "server_rss_peak_MiB": 12.86328125,
+      "client_fps": [
+        29.989051495864665,
+        29.989051495864665,
+        29.989051495864665,
+        29.989051495864665,
+        29.989051495864665,
+        29.989051495864665,
+        29.989051495864665,
+        29.989051495864665
+      ],
+      "client_payload_KiB_s": [
+        27.012721112418884,
+        27.012721112418884,
+        27.012721112418884,
+        27.012721112418884,
+        27.012721112418884,
+        27.012721112418884,
+        27.012721112418884,
+        27.775382130685298
+      ],
+      "client_handle_p50_us": [
+        1064.988,
+        902.644,
+        880.813,
+        882.607,
+        857.086,
+        865.974,
+        893.467,
+        857.748
+      ],
+      "client_quantized_frames": [
+        308,
+        307,
+        306,
+        305,
+        304,
+        303,
+        302,
+        301
+      ],
+      "trial": 1,
+      "variant": "sse2"
+    },
+    {
+      "scene": "dynamic",
+      "clients": 8,
+      "elapsed_s": 8.10091711700079,
+      "server_cpu_seconds": 0.15999999999999998,
+      "server_cpu_pct_one_core": 1.975085014315477,
+      "server_rss_peak_MiB": 12.79296875,
+      "client_fps": [
+        29.99660365491631,
+        29.99660365491631,
+        29.99660365491631,
+        29.99660365491631,
+        29.99660365491631,
+        29.99660365491631,
+        29.99660365491631,
+        29.99660365491631
+      ],
+      "client_payload_KiB_s": [
+        26.992024864828483,
+        26.992024864828483,
+        26.992024864828483,
+        26.992024864828483,
+        26.992024864828483,
+        27.745580554799556,
+        27.745580554799556,
+        27.745580554799556
+      ],
+      "client_handle_p50_us": [
+        1041.222,
+        922.061,
+        930.508,
+        878.948,
+        879.369,
+        896.632,
+        890.991,
+        878.327
+      ],
+      "client_quantized_frames": [
+        311,
+        310,
+        309,
+        308,
+        307,
+        306,
+        305,
+        304
+      ],
+      "trial": 2,
+      "variant": "stock"
+    },
+    {
+      "scene": "dynamic",
+      "clients": 8,
+      "elapsed_s": 8.00060625000333,
+      "server_cpu_seconds": 0.15,
+      "server_cpu_pct_one_core": 1.8748579209224,
+      "server_rss_peak_MiB": 12.85546875,
+      "client_fps": [
+        29.9977267347584,
+        29.9977267347584,
+        29.9977267347584,
+        29.9977267347584,
+        29.9977267347584,
+        29.9977267347584,
+        29.9977267347584,
+        29.9977267347584
+      ],
+      "client_payload_KiB_s": [
+        27.033473830487534,
+        27.033473830487534,
+        27.033473830487534,
+        27.033473830487534,
+        27.033473830487534,
+        27.033473830487534,
+        27.033473830487534,
+        27.79586722723762
+      ],
+      "client_handle_p50_us": [
+        1021.192,
+        885.82,
+        869.449,
+        851.454,
+        850.493,
+        889.848,
+        853.918,
+        856.754
+      ],
+      "client_quantized_frames": [
+        308,
+        307,
+        306,
+        305,
+        304,
+        303,
+        302,
+        301
+      ],
+      "trial": 0,
+      "variant": "stock"
+    },
+    {
+      "scene": "dynamic",
+      "clients": 1,
+      "elapsed_s": 8.089785824995488,
+      "server_cpu_seconds": 0.07,
+      "server_cpu_pct_one_core": 0.865288667886817,
+      "server_rss_peak_MiB": 12.0546875,
+      "client_fps": [
+        30.037878042356645
+      ],
+      "client_payload_KiB_s": [
+        27.093144258256338
+      ],
+      "client_handle_p50_us": [
+        1041.66
+      ],
+      "client_quantized_frames": [
+        304
+      ],
+      "trial": 1,
+      "variant": "stock"
+    },
+    {
+      "scene": "dynamic",
+      "clients": 8,
+      "elapsed_s": 8.101164944004267,
+      "server_cpu_seconds": 0.15999999999999998,
+      "server_cpu_pct_one_core": 1.9750245934495776,
+      "server_rss_peak_MiB": 12.93359375,
+      "client_fps": [
+        29.99568601301546,
+        29.99568601301546,
+        29.99568601301546,
+        29.99568601301546,
+        29.99568601301546,
+        29.99568601301546,
+        29.99568601301546,
+        29.99568601301546
+      ],
+      "client_payload_KiB_s": [
+        27.023384902133735,
+        27.023384902133735,
+        27.023384902133735,
+        27.023384902133735,
+        27.023384902133735,
+        27.023384902133735,
+        27.023384902133735,
+        27.77679699375116
+      ],
+      "client_handle_p50_us": [
+        1068.862,
+        895.948,
+        891.68,
+        882.722,
+        872.042,
+        874.167,
+        874.918,
+        886.811
+      ],
+      "client_quantized_frames": [
+        311,
+        310,
+        309,
+        308,
+        307,
+        306,
+        305,
+        304
+      ],
+      "trial": 0,
+      "variant": "sse2"
+    },
+    {
+      "scene": "dense",
+      "clients": 1,
+      "elapsed_s": 8.041658197005745,
+      "server_cpu_seconds": 0.33999999999999997,
+      "server_cpu_pct_one_core": 4.22798372761723,
+      "server_rss_peak_MiB": 18.30078125,
+      "client_fps": [
+        29.96894348105154
+      ],
+      "client_payload_KiB_s": [
+        1671.8328812776317
+      ],
+      "client_handle_p50_us": [
+        18872.188
+      ],
+      "client_quantized_frames": [
+        301
+      ],
+      "trial": 1,
+      "variant": "stock"
+    },
+    {
+      "scene": "dynamic",
+      "clients": 4,
+      "elapsed_s": 8.095622761000413,
+      "server_cpu_seconds": 0.11,
+      "server_cpu_pct_one_core": 1.3587589645346418,
+      "server_rss_peak_MiB": 12.53125,
+      "client_fps": [
+        30.016220761992543,
+        30.016220761992543,
+        30.016220761992543,
+        30.016220761992543
+      ],
+      "client_payload_KiB_s": [
+        27.051535120003205,
+        27.051535120003205,
+        27.051535120003205,
+        27.051535120003205
+      ],
+      "client_handle_p50_us": [
+        1036.127,
+        935.553,
+        880.958,
+        881.179
+      ],
+      "client_quantized_frames": [
+        307,
+        306,
+        305,
+        304
+      ],
+      "trial": 0,
+      "variant": "stock"
+    },
+    {
+      "scene": "dynamic",
+      "clients": 4,
+      "elapsed_s": 8.095390767994104,
+      "server_cpu_seconds": 0.1,
+      "server_cpu_pct_one_core": 1.2352708209634486,
+      "server_rss_peak_MiB": 12.41015625,
+      "client_fps": [
+        30.017080949411802,
+        30.017080949411802,
+        30.017080949411802,
+        30.017080949411802
+      ],
+      "client_payload_KiB_s": [
+        27.0707670303482,
+        27.0707670303482,
+        27.0707670303482,
+        27.0707670303482
+      ],
+      "client_handle_p50_us": [
+        1072.205,
+        914.703,
+        893.351,
+        890.536
+      ],
+      "client_quantized_frames": [
+        307,
+        306,
+        305,
+        304
+      ],
+      "trial": 2,
+      "variant": "sse2"
+    },
+    {
+      "scene": "plots",
+      "clients": 1,
+      "elapsed_s": 8.074428781997995,
+      "server_cpu_seconds": 0.23000000000000004,
+      "server_cpu_pct_one_core": 2.848498713776347,
+      "server_rss_peak_MiB": 15.94140625,
+      "client_fps": [
+        29.35192152891279
+      ],
+      "client_payload_KiB_s": [
+        242.93768150954102
+      ],
+      "client_handle_p50_us": [
+        33435.499
+      ],
+      "client_quantized_frames": [
+        297
+      ],
+      "trial": 2,
+      "variant": "sse2"
+    },
+    {
+      "scene": "dynamic",
+      "clients": 8,
+      "elapsed_s": 8.097344679001253,
+      "server_cpu_seconds": 0.16999999999999998,
+      "server_cpu_pct_one_core": 2.099453669557367,
+      "server_rss_peak_MiB": 12.81640625,
+      "client_fps": [
+        30.00983774720236,
+        30.00983774720236,
+        30.00983774720236,
+        30.00983774720236,
+        30.00983774720236,
+        30.00983774720236,
+        30.00983774720236,
+        30.00983774720236
+      ],
+      "client_payload_KiB_s": [
+        27.046867977344515,
+        27.046867977344515,
+        27.046867977344515,
+        27.046867977344515,
+        27.046867977344515,
+        27.046867977344515,
+        27.046867977344515,
+        27.800273714575955
+      ],
+      "client_handle_p50_us": [
+        1087.324,
+        906.364,
+        887.719,
+        887.087,
+        881.267,
+        870.355,
+        876.117,
+        890.645
+      ],
+      "client_quantized_frames": [
+        311,
+        310,
+        309,
+        308,
+        307,
+        306,
+        305,
+        304
+      ],
+      "trial": 2,
+      "variant": "sse2"
+    },
+    {
+      "scene": "dense",
+      "clients": 1,
+      "elapsed_s": 8.037892448002822,
+      "server_cpu_seconds": 0.32,
+      "server_cpu_pct_one_core": 3.9811430927955564,
+      "server_rss_peak_MiB": 18.34375,
+      "client_fps": [
+        29.982983917616533
+      ],
+      "client_payload_KiB_s": [
+        1672.6162557267126
+      ],
+      "client_handle_p50_us": [
+        18704.377
+      ],
+      "client_quantized_frames": [
+        302
+      ],
+      "trial": 0,
+      "variant": "sse2"
+    },
+    {
+      "scene": "dynamic",
+      "clients": 1,
+      "elapsed_s": 8.090263828009483,
+      "server_cpu_seconds": 0.07,
+      "server_cpu_pct_one_core": 0.8652375433994062,
+      "server_rss_peak_MiB": 12.17578125,
+      "client_fps": [
+        30.036103292293667
+      ],
+      "client_payload_KiB_s": [
+        27.104700705595203
+      ],
+      "client_handle_p50_us": [
+        1022.918
+      ],
+      "client_quantized_frames": [
+        304
+      ],
+      "trial": 0,
+      "variant": "sse2"
+    }
+  ],
+  "project_commit": "94b7a72f3da91d11966fd6afc985cc0ec8e2eb0d",
+  "source_sha256": {
+    "src/draw_protocol.cpp": "7d391efd6d39dbb054ec165db1b445fe69b24796a2d044e2c4e070906f3d437b",
+    "src/state.cpp": "271a505c5aa6a4b9298c05bbfc8294ea22197f39f30114e1acba93af5216ba30",
+    "tools/benchmarks/transport_host.cpp": "467b6e9c84c31208b10e64f89fe987f12e65963dc1e849edb536dab009dfec22",
+    "tools/benchmarks/comparison/server_cpu.py": "41ce63ab0a778f201b721d183f74fa6f7abf36e56d02eb02db44145a7e66aac8"
+  },
+  "quiche_library_sha256": "54761d4e25777fd20f15127c903cc85a063107e374a32dade44c3c22e3a8563c",
+  "cpu_stat_clock_ticks_per_second": 100,
+  "measured_simd_draw_source_sha256": "9da00a3e12c6ba4337ff4ae4f3558f8252531620202d87f4cb6e5c2d57e13bb7"
+}

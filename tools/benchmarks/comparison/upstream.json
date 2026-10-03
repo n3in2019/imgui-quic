@@ -1,0 +1,14 @@
+{
+  "imgui-ws": {
+    "url": "https://github.com/ggerganov/imgui-ws.git",
+    "commit": "5e51bbf43a50d5f2c53124ab33f8740fa3f99b70"
+  },
+  "netImgui": {
+    "url": "https://github.com/sammyfreg/netImgui.git",
+    "commit": "bf471d8458d1841bfea94fe07b6b89f630a8ba7c"
+  },
+  "remoteimgui": {
+    "url": "https://github.com/JordiRos/remoteimgui.git",
+    "commit": "fc6b8de10bdb7f3e38b53a1a8357f8df391ebc07"
+  }
+}

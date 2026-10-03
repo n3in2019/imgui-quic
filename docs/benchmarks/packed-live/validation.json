@@ -1,0 +1,32 @@
+{
+  "ctest_production_passed": 7,
+  "frontend_suites_passed": 9,
+  "byte_identical_fixture_frames": 3360,
+  "differential_cases": 300000,
+  "packed_cases": 86871,
+  "fallback_cases": 213129,
+  "sanitizers": [
+    "address",
+    "undefined"
+  ],
+  "sanitized_suites": [
+    "draw_protocol",
+    "quantization"
+  ],
+  "forced_scalar_core_suites_passed": 6,
+  "native_precision_modes": [
+    "integer",
+    "quarter",
+    "fine"
+  ],
+  "source_sha256": {
+    "src/draw_protocol.cpp": "020a54af1f47d2bc852e2d62e8ab51b2bfe201f7936c19227afa2ba74c662315",
+    "tests/quantization_tests.cpp": "64627f666b1fe98d8075e8d3ba26b014fba887379f269c06a1f90742eaf9fb27",
+    "tests/CMakeLists.txt": "ebe04a1a45cb035f17ed6f5e1349bf8bb29ea6f00a16d0ff1919ae7995897b8f",
+    "CMakeLists.txt": "fce5f755e5a582fbb2b3e56c717b9cff55cc057d146c72f28927de1ff71bfd1e"
+  },
+  "network_comparison_cases_passed": 16,
+  "decoder_trials_passed": 90,
+  "quantized_cross_language_frames": 450,
+  "planar_cross_language_frames": 240
+}

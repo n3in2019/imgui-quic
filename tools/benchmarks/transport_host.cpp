@@ -1,6 +1,7 @@
 // Timestamped draw workload for the isolated native WebTransport benchmark.
 #include "imgui_quic.hpp"
 #include "imgui_quic_transport.h"
+#include "comparison/scenes.hpp"
 #include <chrono>
 #include <cmath>
 #include <csignal>
@@ -12,18 +13,26 @@ void stop(int) { running = 0; }
 int main(int argc, char** argv) {
     if (argc != 3) return 2;
     imgui_quic::Config config;
-    const bool dynamic = std::atoi(argv[1]);
+    config.port = 19443;
+    const std::string certificate=std::getenv("IMGUI_QUIC_CERT")?std::getenv("IMGUI_QUIC_CERT"):"";
+    // Fanout exercises independent clients from one loopback address. Override
+    // only this benchmark's per-address admission limit, not the library default.
+    const bool fanout=std::getenv("IMGW_BENCH_FANOUT")!=nullptr;
+    if(!certificate.empty() && fanout) unsetenv("IMGUI_QUIC_CERT");
+    if (!certificate.empty()) setenv("IMGUI_QUIC_ORIGINS", "http://localhost", 1);
+    const std::string scene=std::string(argv[1])=="0"?"moving":std::string(argv[1])=="1"?"dynamic":argv[1];
     const int fps = std::atoi(argv[2]);
     imgui_quic::Server app;
     if (!app.init(config) || fps < 1) return 1;
-    if (const char* cert = std::getenv("IMGUI_QUIC_CERT")) {
-        imgui_quic_transport_config_t quic{};
-        quic.certificate_file = cert;
-        quic.private_key_file = std::getenv("IMGUI_QUIC_KEY");
-        quic.token_file = std::getenv("IMGUI_QUIC_TOKEN_FILE");
-        quic.allowed_origins = "http://localhost";
-        quic.port = 19443;
-        if (imgui_quic_start(&quic) != 0) return 1;
+    if(!certificate.empty() && fanout) {
+        imgui_quic_transport_config_t transport{};
+        transport.host="127.0.0.1";transport.port=config.port;
+        transport.certificate_file=certificate.c_str();
+        transport.private_key_file=std::getenv("IMGUI_QUIC_KEY");
+        transport.token_file=std::getenv("IMGUI_QUIC_TOKEN_FILE");
+        transport.allowed_origins="http://localhost";
+        transport.max_clients_per_ip=8;
+        if(imgui_quic_start(&transport)!=0)return 1;
     }
     std::signal(SIGTERM,stop);
     unsigned tick = 0;
@@ -37,14 +46,7 @@ int main(int argc, char** argv) {
         marker->VtxBuffer[start].col = uint32_t(stamp);
         marker->VtxBuffer[start+1].col = uint32_t(uint64_t(stamp)>>32);
         marker->VtxBuffer[start+2].col = uint32_t(std::fmax(0.0f,ImGui::GetIO().MousePos.x));
-        ImGui::SetNextWindowPos(ImVec2(dynamic ? 30 : 130+int(100*std::sin(tick*.04)),30));
-        ImGui::SetNextWindowSize(ImVec2(1000,650));
-        ImGui::Begin("Transport benchmark",nullptr,ImGuiWindowFlags_NoSavedSettings|ImGuiWindowFlags_NoResize);
-        ImGui::TextUnformatted("Native draw data / identical codec / 30 FPS");
-        for (unsigned row=0; row<30; ++row) {
-            ImGui::Text("Row %02u: value %08u",row,dynamic ? tick*1234567u+row : row);
-        }
-        ImGui::End(); ++tick;
+        benchmark_scene::draw(scene,tick++);
     });
     auto next = Clock::now();
     while (running) {
