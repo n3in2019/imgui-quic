@@ -45,6 +45,9 @@ jobs:
       - name: Run draw transport and frontend regressions
         run: |
           node tests/browser/draw_ip.mjs
+          node tests/browser/compressed_draw.mjs
+          node tests/browser/planar_draw.mjs
+          node tests/browser/quantized_draw.mjs
           node tests/browser/webtransport.mjs
           node tests/browser/dev_server.mjs
           node tests/browser/clipboard_shortcuts.mjs
@@ -57,6 +60,9 @@ jobs:
           build/webtransport_venv/bin/pip install -r tests/webtransport/requirements.txt
           ./build/examples/imgui_quic_dev --prepare-only
           build/webtransport_venv/bin/python tests/webtransport/test_native.py
+          IMGUI_QUIC_TEST_LZ4=0 build/webtransport_venv/bin/python tests/webtransport/test_native.py
+          IMGUI_QUIC_TEST_QUANTIZED=1 build/webtransport_venv/bin/python tests/webtransport/test_native.py
+          IMGUI_QUIC_TEST_PRECISION=integer build/webtransport_venv/bin/python tests/webtransport/test_native.py
 
       - name: Check frontend JavaScript
         run: |

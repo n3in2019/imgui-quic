@@ -1,0 +1,41 @@
+{
+  "upstream_roundtrips": [
+    {
+      "algorithm": "imgui-ws",
+      "scene": "static",
+      "frames": 1500,
+      "roundtrip": "passed"
+    },
+    {
+      "algorithm": "netImgui",
+      "scene": "static",
+      "frames": 1500,
+      "roundtrip": "passed"
+    },
+    {
+      "algorithm": "imgui-ws",
+      "scene": "moving",
+      "frames": 1500,
+      "roundtrip": "passed"
+    },
+    {
+      "algorithm": "netImgui",
+      "scene": "moving",
+      "frames": 1500,
+      "roundtrip": "passed"
+    },
+    {
+      "algorithm": "imgui-ws",
+      "scene": "dynamic",
+      "frames": 1500,
+      "roundtrip": "passed"
+    },
+    {
+      "algorithm": "netImgui",
+      "scene": "dynamic",
+      "frames": 1500,
+      "roundtrip": "passed"
+    }
+  ],
+  "remote_lz4_adaptation": "exact identifier-prefix substitution verified against pinned sources"
+}

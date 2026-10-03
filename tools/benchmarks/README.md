@@ -38,3 +38,10 @@ Use `perf record -e cpu-clock:u -F 1999 --call-graph dwarf,16384 -p PID -o cpu.d
 to sample an active benchmark host. Keep profiled runs separate from clean latency
 measurements and preserve the matching binaries. Do not infer hardware cache or
 kernel costs from userspace software-event samples.
+
+## Encoder comparison
+
+See [the comparison harness](comparison/README.md) for pinned upstream encoders,
+shared workloads, precision differences and measurement boundaries.
+
+The [integrated encoder comparison](../../docs/benchmarks/integrated-comparison/README.md) measures the production adaptive codec against pinned imgui-ws, netImgui and RemoteImGui encoders.

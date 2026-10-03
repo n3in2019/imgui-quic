@@ -1,0 +1,31 @@
+{
+  "command": "taskset -c 0 perf record -g -- codec imgui-quic-q1-adaptive-live plots 5000",
+  "scope": "Whole benchmark process, including ImGui scene layout outside encoder timer; separate sampled runs, no lost samples.",
+  "profiles": {
+    "before": {
+      "sampled_cycles_approx": 13679077961,
+      "lost_samples": 0,
+      "symbol_self_percent": {
+        "imgui_quic_core::encode_draw_frame(imgui_quic_core::DrawSnapshot const&, imgui_quic_core::DrawSnapshot const*, bool, bool, bool)": 38.84,
+        "LZ4_compress_fast_extState": 21.6,
+        "imgui_quic_core::quantize_draw_frame(std::vector<unsigned char, std::allocator<unsigned char> > const&, unsigned int)": 21.51,
+        "ImDrawList::AddPolyline(ImVec2 const*, int, unsigned int, float, int) [clone .part.0]": 4.24,
+        "imgui_quic_core::encode_ranges(imgui_quic_core::DrawSnapshot const&, imgui_quic_core::DrawSnapshot const*, unsigned long)": 3.82,
+        "void std::vector<unsigned char, std::allocator<unsigned char> >::_M_range_insert<__gnu_cxx::__normal_iterator<unsigned char const*, std::vector<unsigned char, std::allocator<unsigned char> > > >(__gnu_cxx::__normal_iterator<unsigned char*, std::vector<unsigned char, std::allocator<unsigned char> > >, __gnu_cxx::__normal_iterator<unsigned char const*, std::vector<unsigned char, std::allocator<unsigned char> > >, __gnu_cxx::__normal_iterator<unsigned char const*, std::vector<unsigned char, std::allocator<unsigned char> > >, std::forward_iterator_tag) [clone .isra.0]": 1.03
+      }
+    },
+    "after": {
+      "sampled_cycles_approx": 10864908850,
+      "lost_samples": 0,
+      "symbol_self_percent": {
+        "imgui_quic_core::encode_draw_frame(imgui_quic_core::DrawSnapshot const&, imgui_quic_core::DrawSnapshot const*, bool, bool, bool)": 26.86,
+        "LZ4_compress_fast_extState": 26.14,
+        "imgui_quic_core::quantize_draw_frame(std::vector<unsigned char, std::allocator<unsigned char> > const&, unsigned int)": 24.3,
+        "ImDrawList::AddPolyline(ImVec2 const*, int, unsigned int, float, int) [clone .part.0]": 5.49,
+        "imgui_quic_core::encode_ranges(imgui_quic_core::DrawSnapshot const&, imgui_quic_core::DrawSnapshot const*, unsigned long)": 4.64,
+        "void std::vector<unsigned char, std::allocator<unsigned char> >::_M_range_insert<__gnu_cxx::__normal_iterator<unsigned char const*, std::vector<unsigned char, std::allocator<unsigned char> > > >(__gnu_cxx::__normal_iterator<unsigned char*, std::vector<unsigned char, std::allocator<unsigned char> > >, __gnu_cxx::__normal_iterator<unsigned char const*, std::vector<unsigned char, std::allocator<unsigned char> > >, __gnu_cxx::__normal_iterator<unsigned char const*, std::vector<unsigned char, std::allocator<unsigned char> > >, std::forward_iterator_tag) [clone .isra.0]": 1.51,
+        "benchmark_scene::draw(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, unsigned int)": 1.29
+      }
+    }
+  }
+}

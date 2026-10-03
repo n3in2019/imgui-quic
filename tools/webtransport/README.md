@@ -86,7 +86,11 @@ one adapter payload copy. On little-endian x86-64/AArch64, canonical ImGui verte
 bytes are copied in bulk; custom layouts retain the scalar serializer. Motion
 encoding evaluates its residual first and stops building the ordinary candidate
 once it is provably larger. Wire bytes and the strict smaller-candidate rule are
-preserved; no lossy geometry quantization or floating-point fast-math is used.
+preserved. Negotiated lossless LZ4 handles larger updates, with compact exact
+patches retained for small changes. Negotiated byte-lane subtraction/LZ4 handles
+broad attribute changes. The browser defaults to integer position offsets and
+u16 UVs; quarter, fine and exact modes are selected with `draw-precision` in the
+URL fragment. Floating-point fast-math is not used.
 
 ## Delivery and limits
 

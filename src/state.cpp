@@ -616,8 +616,10 @@ void State::publish_draw_frame(std::vector<uint8_t> bytes) {
     snapshot->id=draw_frame_id_; snapshot->bytes=std::move(bytes);
     std::lock_guard<std::mutex> lock(clients_mtx_);
     const auto now=std::chrono::steady_clock::now();
+    std::shared_ptr<DrawSnapshot> quantized[3];
     for(auto& [id,cs]:clients_) {
         if(!(cs.capabilities & kDrawIPCapability)) continue;
+        auto selected=snapshot;
         // Never queue unbounded history or an unbounded stream of snapshots
         // to a receiver that stopped acknowledging. Disconnect to recover.
         if(!cs.draw_pending.empty() && now-cs.draw_ack_time>std::chrono::seconds(cs.draw_base?10:60)) {
@@ -627,17 +629,24 @@ void State::publish_draw_frame(std::vector<uint8_t> bytes) {
         // receiver downloads textures. Repeating them cannot improve freshness.
         if(!cs.draw_base && !cs.draw_pending.empty()) continue;
         if(cs.draw_pending.size()>=kDrawWindow || cs.draw_pending_bytes>=kDrawByteWindow) continue;
+        if(cs.capabilities & (kDrawQuantizedCapability|kDrawQuarterCapability|kDrawIntegerCapability)) {
+            const unsigned mode=cs.capabilities & kDrawIntegerCapability?2:cs.capabilities & kDrawQuarterCapability?1:0;
+            if(!quantized[mode]) quantized[mode]=std::make_shared<DrawSnapshot>(DrawSnapshot{snapshot->id,quantize_draw_frame(snapshot->bytes,mode==2?1:mode==1?4:16)});
+            selected=quantized[mode];
+        }
         auto latest=cs.draw_pending.empty()?cs.draw_base:cs.draw_pending.back();
-        if(latest && latest->bytes==snapshot->bytes && cs.force_frames==0 &&
+        if(latest && latest->bytes==selected->bytes && cs.force_frames==0 &&
            now-cs.last_send<std::chrono::seconds(5)) continue;
         auto wire=std::make_shared<const std::vector<uint8_t>>(
-            encode_draw_frame(*snapshot,cs.draw_base.get(),
-                              (cs.capabilities & kDrawMotionCapability) != 0));
+            encode_draw_frame(*selected,cs.draw_base.get(),
+                              (cs.capabilities & kDrawMotionCapability) != 0,
+                              (cs.capabilities & kDrawLz4Capability) != 0,
+                              (cs.capabilities & kDrawPlanarCapability) != 0));
         if(!cs.draw_pending.empty() && wire->size()>kDrawByteWindow-cs.draw_pending_bytes) continue;
         if(cs.draw_pending.empty()) cs.draw_ack_time=now;
         cs.draw_pending_sizes.push_back(wire->size());
         cs.draw_pending_bytes+=wire->size();
-        cs.draw_pending.push_back(snapshot);
+        cs.draw_pending.push_back(selected);
         cs.last_send=now; cs.force_frames=0;
         {
             std::lock_guard<std::mutex> out_lock(cs.out->mtx);

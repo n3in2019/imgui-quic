@@ -9,7 +9,7 @@ with WebGL. QUIC/TLS runs in the application through Google QUICHE and BoringSSL
 ## Start
 
 Requires Linux x86-64 or AArch64, Git, CMake 3.21+, a C++17 compiler,
-Clang with C++20 support, ICU development files. Dear ImGui and
+Clang with C++20 support, ICU development files. Dear ImGui, LZ4 and
 QUICHE are pinned and downloaded by the build; the first build takes longer.
 Use a WebTransport-capable browser with UDP access to the server.
 Building the C++ development launcher requires OpenSSL development libraries
@@ -100,11 +100,50 @@ frames use reliable streams. Motion deltas preserve the exact original bytes.
 Clients share one UI context and layout. There is no browser prediction;
 interaction incurs network latency. The browser uses WebTransport exclusively.
 
+## Draw compression
+
+The browser negotiates lossless LZ4 compression automatically. Small updates
+and window movement retain compact exact patches; larger updates choose
+compressed geometry, XOR residuals or byte-lane subtraction when smaller.
+Compression reconstructs the selected packed or float geometry exactly.
+Clients without compression support receive the existing I/P format.
+See [the wire protocol](docs/transport.md#lossless-compressed-geometry).
+
+## Geometry precision
+
+The browser defaults to integer position offsets and u16 UVs when supported by
+the server. Append a precision option to the connection URL fragment:
+
+| Option | Position step | Maximum position error |
+|---|---:|---:|
+| `draw-precision=integer` (default) | 1 logical unit | 0.5 logical unit |
+| `draw-precision=quarter` | 1/4 logical unit | 1/8 logical unit |
+| `draw-precision=fine` | 1/16 logical unit | 1/32 logical unit |
+| `draw-precision=exact` | Original float32 | None |
+
+Older servers supporting only fine quantization use that format; servers without
+quantization support use exact geometry. `draw-quantized=1` selects fine precision
+and `draw-quantized=0` selects exact precision for compatibility.
+
+Quantized vertices use 12 bytes: signed 16-bit positions relative to each draw
+list's first vertex at the selected precision, unsigned 16-bit UVs, and
+RGBA8 colors. Device-pixel error scales with framebuffer scale. UV rounding error is at most approximately
+1/131070 (plus float reconstruction rounding). Texture IDs, indices, clip
+rectangles and draw offsets retain their original representation.
+
+Out-of-range positions/UVs or a non-beneficial packed size cause a whole-frame
+fallback to the exact format. Integer positions can change antialiased edges and
+subpixel animation. Use quarter, fine or exact precision where fractional
+geometry is important, especially on high-DPI displays.
+
 ## Develop
 
 ```bash
 ctest --test-dir build --output-on-failure
 node tests/browser/draw_ip.mjs
+node tests/browser/compressed_draw.mjs
+node tests/browser/planar_draw.mjs
+node tests/browser/quantized_draw.mjs
 node tests/browser/webtransport.mjs
 node tests/browser/dev_server.mjs
 node tests/browser/clipboard_shortcuts.mjs

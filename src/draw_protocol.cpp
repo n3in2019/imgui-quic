@@ -1,5 +1,6 @@
 #include "draw_protocol.hpp"
 #include "imgui.h"
+#include "lz4.h"
 #include <algorithm>
 #include <cstring>
 #include <cmath>
@@ -92,10 +93,27 @@ static std::vector<uint8_t> encode_ranges(const DrawSnapshot& frame, const DrawS
         size_t i=0;
         auto differs=[&](size_t p){ return a[p] != (p<b.size()?b[p]:0); };
         while(i<a.size()) {
+            if(i+32<=a.size() && i+32<=b.size() &&
+               std::memcmp(a.data()+i,b.data()+i,32)==0) { i+=32; continue; }
             if(!differs(i)) { ++i; continue; }
             size_t start=i++, end=i;
             // Include short equal runs: a separate patch costs 8 bytes.
             while(i<a.size() && i-end<=8) {
+                // Eight bytes starting at the last change cannot contain a
+                // gap long enough to split a patch. Inspect them together,
+                // then trim the equal suffix to retain the byte-exact ranges.
+                if(i==end && i+8<=a.size() && i+8<=b.size()) {
+                    uint64_t av,bv;
+                    std::memcpy(&av,a.data()+i,8);
+                    std::memcpy(&bv,b.data()+i,8);
+                    if(av!=bv) {
+                        size_t last=i+8;
+                        while(a[last-1]==b[last-1]) --last;
+                        end=last;
+                    }
+                    i+=8;
+                    continue;
+                }
                 if(differs(i)) end=i+1;
                 ++i;
             }
@@ -111,6 +129,7 @@ static std::vector<uint8_t> encode_ranges(const DrawSnapshot& frame, const DrawS
         }
         out.resize(13);
     }
+    if(13+frame.bytes.size()>=bound) return {};
     out.insert(out.end(),frame.bytes.begin(),frame.bytes.end());
     return out;
 }
@@ -141,12 +160,99 @@ bool vertex_ranges(const std::vector<uint8_t>& b, std::vector<VertexRange>& rang
     }
     return off==b.size();
 }
+template<size_t Stride>
+void planar_residual(const std::vector<uint8_t>& bytes, const DrawSnapshot* base,
+                     std::vector<uint8_t>& residual) {
+    size_t destination=0;
+    const size_t common=base?std::min(bytes.size(),base->bytes.size()):0;
+    // Separate the shared prefix from zero extension so the hot lane loop has
+    // no per-byte baseline/null/bounds branches, including topology changes.
+    for(size_t lane=0;lane<Stride;++lane) {
+        size_t i=lane;
+        if(base) {
+            for(;i<common;i+=Stride)
+                residual[destination++]=uint8_t(bytes[i]-base->bytes[i]);
+        }
+        for(;i<bytes.size();i+=Stride)
+            residual[destination++]=bytes[i];
+    }
 }
-std::vector<uint8_t> encode_draw_frame(const DrawSnapshot& frame, const DrawSnapshot* base,
-                                       bool allow_motion) {
-    if(!allow_motion || !base) return encode_ranges(frame,base);
+bool sampled_attributes_changed(const std::vector<uint8_t>& a,const std::vector<uint8_t>& b) {
+    if(a.size()!=b.size() || a.size()<29 || a[0]!=b[0] || read_u32(a,25)!=read_u32(b,25)) return true;
+    const bool packed=a[0]==0x21 || a[0]==0x24 || a[0]==0x25;
+    if(a[0]!=1 && !packed) return true;
+    const size_t stride=packed?12:20, header=packed?20:12;
+    size_t off=29;
+    for(uint32_t list=0;list<read_u32(a,25);++list) {
+        if(a.size()-off<header || std::memcmp(a.data()+off,b.data()+off,header)!=0) return true;
+        const uint32_t nv=read_u32(a,off),ni=read_u32(a,off+4),nc=read_u32(a,off+8);
+        const uint64_t length=header+uint64_t(nv)*stride+uint64_t(ni)*4+uint64_t(nc)*36;
+        if(length>a.size()-off) return true;
+        const size_t samples=std::min<uint32_t>(nv,64);
+        for(size_t j=0;j<samples;++j) {
+            const size_t vertex=samples<=1?0:j*(nv-1)/(samples-1);
+            const size_t at=off+header+vertex*stride;
+            if(std::memcmp(a.data()+at,b.data()+at,stride-4)!=0) return true;
+        }
+        off+=size_t(length);
+    }
+    return off!=a.size();
+}
+}
+std::vector<uint8_t> quantize_draw_frame(const std::vector<uint8_t>& bytes, unsigned scale) {
+    std::vector<VertexRange> ranges;
+    if((scale!=16 && scale!=4 && scale!=1) || bytes.size()>kMaxDrawFrameBytes || !vertex_ranges(bytes,ranges)) return bytes;
+    size_t length=bytes.size()+ranges.size()*8;
+    for(const auto& range:ranges) length-=size_t(range.count)*8;
+    if(length>=bytes.size()) return bytes;
+    // Supported scales are powers of two: multiplying by their reciprocal
+    // is exact, and avoids two runtime divisions for every vertex.
+    const double inverse_scale=1.0/scale, max_error=0.5*inverse_scale;
+    std::vector<uint8_t> packed(length);
+    std::memcpy(packed.data(),bytes.data(),29);
+    packed[0]=scale==16?0x21:scale==4?0x24:0x25;
+    size_t out=29;
+    auto u16=[&](uint16_t v) { packed[out++]=uint8_t(v); packed[out++]=uint8_t(v>>8); };
+    for(const auto& range:ranges) {
+        const size_t start=range.start;
+        const uint32_t nv=range.count, ni=read_u32(bytes,start-8), nc=read_u32(bytes,start-4);
+        std::memcpy(packed.data()+out,bytes.data()+start-12,12);out+=12;
+        const float ox=nv?read_f32(bytes,start):0, oy=nv?read_f32(bytes,start+4):0;
+        if(!std::isfinite(ox) || !std::isfinite(oy)) return bytes;
+        if(nv) std::memcpy(packed.data()+out,bytes.data()+start,8);
+        out+=8;
+        for(uint32_t i=0;i<nv;++i) {
+            size_t p=start+size_t(i)*20;
+            for(int axis=0;axis<2;++axis) {
+                const float v=read_f32(bytes,p+axis*4), origin=axis?oy:ox;
+                const double relative=(double(v)-origin)*scale;
+                // Range-check before integer conversion, including NaN/Inf.
+                // Truncating after a half-unit bias implements ties away from
+                // zero without a libm rounding call for each coordinate.
+                if(!std::isfinite(relative) || relative<-32769 || relative>32768) return bytes;
+                const int q=int(relative+(relative>=0?0.5:-0.5));
+                if(q<-32768 || q>32767 ||
+                   std::abs(double(float(double(origin)+double(q)*inverse_scale))-v)>max_error) return bytes;
+                u16(uint16_t(int16_t(q)));
+            }
+            for(int axis=0;axis<2;++axis) {
+                const float uv=read_f32(bytes,p+8+axis*4);
+                if(!std::isfinite(uv) || uv<0 || uv>1) return bytes;
+                u16(uint16_t(double(uv)*65535+0.5));
+            }
+            std::memcpy(packed.data()+out,bytes.data()+p+16,4);out+=4;
+        }
+        const size_t tail=start+size_t(nv)*20;
+        const size_t tail_size=size_t(ni)*4+size_t(nc)*36;
+        std::memcpy(packed.data()+out,bytes.data()+tail,tail_size);out+=tail_size;
+    }
+    return packed;
+}
+static std::vector<uint8_t> encode_exact(const DrawSnapshot& frame, const DrawSnapshot* base,
+                                       bool allow_motion, size_t bound) {
+    if(!allow_motion || !base) return encode_ranges(frame,base,bound);
     std::vector<VertexRange> current,previous;
-    if(!vertex_ranges(frame.bytes,current) || !vertex_ranges(base->bytes,previous)) return encode_ranges(frame,base);
+    if(!vertex_ranges(frame.bytes,current) || !vertex_ranges(base->bytes,previous)) return encode_ranges(frame,base,bound);
     DrawSnapshot predicted;
     std::vector<uint8_t> motions;
     uint32_t count=0;
@@ -166,12 +272,13 @@ std::vector<uint8_t> encode_draw_frame(const DrawSnapshot& frame, const DrawSnap
             write_f32(predicted.bytes,off+4,read_f32(base->bytes,off+4)+dy);
         }
     }
-    if(!count) return encode_ranges(frame,base);
+    if(!count) return encode_ranges(frame,base,bound);
     // Residual patches restore every differing bit, including fractional
     // float rounding, stationary sub-elements, UVs, and viewport-clamped clips.
-    auto residual=encode_ranges(frame,&predicted);
+    auto residual=encode_ranges(frame,&predicted,bound);
+    if(residual.empty()) return encode_ranges(frame,base,bound);
     const size_t motion_size=residual.size()+4+motions.size();
-    if(residual[0]!=0x0e || motion_size>=13+frame.bytes.size()) return encode_ranges(frame,base);
+    if(residual[0]!=0x0e || motion_size>=13+frame.bytes.size() || motion_size>=bound) return encode_ranges(frame,base,bound);
     // Evaluate motion first. Most window moves produce a tiny residual, so the
     // ordinary delta loses after only a few patches rather than a whole-frame scan.
     // +1 retains the original tie rule: motion must be strictly smaller.
@@ -183,6 +290,59 @@ std::vector<uint8_t> encode_draw_frame(const DrawSnapshot& frame, const DrawSnap
     out.insert(out.end(),residual.begin()+13,residual.end());
     return out;
 }
+std::vector<uint8_t> encode_draw_frame(const DrawSnapshot& frame, const DrawSnapshot* base,
+                                      bool allow_motion, bool allow_lz4, bool allow_planar) {
+    if(frame.bytes.size()>kMaxDrawFrameBytes) throw std::length_error("draw frame exceeds protocol limit");
+    if(!allow_lz4) return encode_exact(frame,base,allow_motion,std::numeric_limits<size_t>::max());
+    // Tiny patches/motion are cheaper than starting a compressor. Stop scanning
+    // once this candidate cannot fit; the full candidate is evaluated only if
+    // needed to beat compression. Never reference a speculative baseline.
+    auto small=encode_exact(frame,base,allow_motion,513);
+    if(!small.empty()) return small;
+    auto residual=frame.bytes;
+    if(base) {
+        const size_t common=std::min(residual.size(),base->bytes.size());
+        size_t i=0;
+        for(;i+8<=common;i+=8) {
+            uint64_t a,b;
+            std::memcpy(&a,residual.data()+i,8); std::memcpy(&b,base->bytes.data()+i,8);
+            a^=b; std::memcpy(residual.data()+i,&a,8);
+        }
+        for(;i<common;++i) residual[i]^=base->bytes[i];
+    }
+    std::vector<uint8_t> compressed(13+LZ4_compressBound(int(residual.size())));
+    const int size=LZ4_compress_default(reinterpret_cast<const char*>(residual.data()),
+        reinterpret_cast<char*>(compressed.data()+13),int(residual.size()),int(compressed.size()-13));
+    if(size<=0 || size_t(size)>=frame.bytes.size())
+        return encode_exact(frame,base,allow_motion,std::numeric_limits<size_t>::max());
+    compressed.resize(13+size_t(size));
+    compressed[0]=base?0x23:0x22;
+    const uint32_t header[]={frame.id,base?base->id:0,uint32_t(frame.bytes.size())};
+    for(size_t i=0;i<3;++i) for(int j=0;j<4;++j) compressed[1+i*4+j]=uint8_t(header[i]>>(j*8));
+    auto exact=encode_exact(frame,base,allow_motion,compressed.size()+1);
+    auto best=exact.empty()?std::move(compressed):std::move(exact);
+    // Preserve tiny-frame latency. Broad changes can benefit from subtraction
+    // and attribute-byte lanes; pay the second compression cost only for bulk.
+    if(!allow_planar || best.size()<4096) return best;
+    // Stable position/UV samples usually indicate color-only animation, where
+    // XOR already works well. This bounded heuristic skips a second compressor;
+    // a missed opportunity affects size only, never reconstructed geometry.
+    if(base && !sampled_attributes_changed(frame.bytes,base->bytes)) return best;
+    const size_t stride=frame.bytes[0]==1?20:12;
+    // Fixed strides let the compiler specialize address calculations.
+    if(stride==20) planar_residual<20>(frame.bytes,base,residual);
+    else planar_residual<12>(frame.bytes,base,residual);
+    // Use the current winner as a bounded compressor destination. A candidate
+    // that cannot fit is discarded without growing another worst-case buffer.
+    std::vector<uint8_t> planar(best.size());
+    const int n=LZ4_compress_default(reinterpret_cast<const char*>(residual.data()),
+        reinterpret_cast<char*>(planar.data()+14),int(residual.size()),int(planar.size()-14));
+    if(n<=0 || 14+size_t(n)>=best.size()) return best;
+    planar.resize(14+size_t(n));planar[0]=base?0x27:0x26;planar[13]=uint8_t(stride);
+    for(size_t i=0;i<3;++i) for(int j=0;j<4;++j) planar[1+i*4+j]=uint8_t(header[i]>>(j*8));
+    return planar;
+}
+
 }
 
 namespace imgui_quic_core {

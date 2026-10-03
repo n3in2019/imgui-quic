@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstring>
 #include <random>
+#include <cmath>
 using namespace imgui_quic_core;
 
 static std::vector<uint8_t> geometry(size_t n, uint32_t color=0xff112233) {
@@ -47,7 +48,144 @@ static void write_record(const std::vector<uint8_t>& bytes) {
     for(int i=0;i<4;++i)h[i]=uint8_t(n>>(8*i));
     fwrite(h,1,4,stdout); fwrite(bytes.data(),1,bytes.size(),stdout);
 }
-int main(int argc,char**) {
+// Frozen scalar encoder reference for differential scan tests, including tails,
+// zero-extended baselines and the eight-byte patch merge boundary.
+static std::vector<uint8_t> scalar_ranges(const DrawSnapshot& f,const DrawSnapshot& b) {
+    std::vector<uint8_t> out{14};
+    auto put=[&](uint32_t x){for(int j=0;j<4;++j)out.push_back(uint8_t(x>>(8*j)));};
+    put(f.id);put(b.id);put(uint32_t(f.bytes.size()));
+    auto different=[&](size_t i){return f.bytes[i]!=(i<b.bytes.size()?b.bytes[i]:0);};
+    size_t i=0;
+    while(i<f.bytes.size()) {
+        if(!different(i)){++i;continue;}
+        size_t start=i++,end=i;
+        while(i<f.bytes.size() && i-end<=8){if(different(i))end=i+1;++i;}
+        put(uint32_t(start));put(uint32_t(end-start));
+        out.insert(out.end(),f.bytes.begin()+start,f.bytes.begin()+end);
+        if(out.size()>=13+f.bytes.size())break;
+    }
+    if(out.size()>=13+f.bytes.size()) {
+        out.resize(13);out[0]=13;for(int j=5;j<9;++j)out[j]=0;
+        out.insert(out.end(),f.bytes.begin(),f.bytes.end());
+    }
+    return out;
+}
+int main(int argc,char** argv) {
+    if(argc>1 && (std::strcmp(argv[1],"--compressed-fixtures")==0 || std::strcmp(argv[1],"--planar-fixtures")==0)) {
+        const bool planar=std::strcmp(argv[1],"--planar-fixtures")==0;
+        std::vector<DrawSnapshot> history;
+        std::mt19937 rng(781);
+        for(uint32_t id=1;id<=240;++id) {
+            auto bytes=geometry(id%11==0 ? 0 : 1000+id%7);
+            if(id%3==0) bytes=moved(bytes,float(id)*0.125f,-float(id));
+            if(id%4==0 && bytes.size()>100) {
+                for(size_t i=0;i<word(bytes,29);++i)bytes[41+20*i+16]=uint8_t(id);
+            }
+            if(id%19==0 && bytes.size()>100) {
+                for(size_t i=0;i<word(bytes,29);++i)for(int j=0;j<4;++j)bytes[41+20*i+16+j]=uint8_t(rng());
+            }
+            if(planar) {
+                for(size_t i=1;i<word(bytes,29);++i) {
+                    set_float(bytes,41+20*i,float(i%100)*1.234f);
+                    set_float(bytes,45+20*i,200+150*std::sin(float(i)*0.017f+float(id)*0.03f));
+                }
+            }
+            if(id%5==0)bytes=quantize_draw_frame(bytes,planar?(id%3==0?1:id%3==1?4:16):16);
+            const DrawSnapshot* base=id%17==1?nullptr:&history[history.size()-std::min<size_t>(6,history.size())];
+            DrawSnapshot frame{id,std::move(bytes)};
+            auto wire=encode_draw_frame(frame,base,true,true,planar);
+            if(planar) assert(wire.size()<=encode_draw_frame(frame,base,true,true).size());
+            assert(wire.size()<=encode_draw_frame(frame,base,true).size());
+            write_record(wire);write_record(frame.bytes);history.push_back(std::move(frame));
+        }
+        return 0;
+    }
+    if(argc>1 && std::strcmp(argv[1],"--quantized-fixtures")==0) {
+        const unsigned scale=argc>2?std::stoul(argv[2]):16;
+        DrawSnapshot base;
+        for(uint32_t i=1;i<=150;++i) {
+            auto bytes=moved(geometry(300+i%7),0.013f*i,-0.017f*i);
+            for(size_t vertex=1;vertex<word(bytes,29);++vertex) {
+                const size_t p=41+vertex*20;
+                set_float(bytes,p,get_float(bytes,p)+0.731f*std::sin(float(vertex+i)));
+                set_float(bytes,p+4,get_float(bytes,p+4)+0.481f*std::cos(float(vertex+i)));
+            }
+            set_float(bytes,49,0.123456f);set_float(bytes,53,0.876543f);
+            set_float(bytes,61,get_float(bytes,61)+0.02f);
+            if(i%13==0)set_float(bytes,61,100000.0f); // coordinate fallback in every mode
+            if(i%17==0)set_float(bytes,49,1.5f); // UV fallback
+            DrawSnapshot packed{i,quantize_draw_frame(bytes,scale)};
+            write_record(encode_draw_frame(packed,base.id?&base:nullptr,true));
+            write_record(bytes);base=std::move(packed);
+        }
+        return 0;
+    }
+    if(argc==1) {
+        State precision_modes;
+        const auto fine_client=precision_modes.add_client(), quarter_client=precision_modes.add_client(), integer_client=precision_modes.add_client();
+        precision_modes.set_client_capabilities(fine_client,kDrawIPCapability|kDrawQuantizedCapability);
+        precision_modes.set_client_capabilities(quarter_client,kDrawIPCapability|kDrawQuarterCapability);
+        precision_modes.set_client_capabilities(integer_client,kDrawIPCapability|kDrawQuantizedCapability|kDrawQuarterCapability|kDrawIntegerCapability);
+        precision_modes.publish_draw_frame(geometry(300));
+        assert(queued(precision_modes,fine_client)[13]==0x21);
+        assert(queued(precision_modes,quarter_client)[13]==0x24);
+        assert(queued(precision_modes,integer_client)[13]==0x25);
+        for(unsigned scale:{16u,4u,1u}) {
+            auto source=geometry(4);
+            set_float(source,61,-32768.0f/scale);
+            set_float(source,81,32767.0f/scale);
+            const auto packed=quantize_draw_frame(source,scale);
+            assert(packed[0]==(scale==16?0x21:scale==4?0x24:0x25));
+            set_float(source,81,32768.0f/scale);
+            assert(quantize_draw_frame(source,scale)==source);
+            set_float(source,81,NAN);
+            assert(quantize_draw_frame(source,scale)==source);
+            auto empty=geometry(0);
+            assert(quantize_draw_frame(empty,scale)==empty);
+        }
+        std::mt19937 scan_rng(926);
+        for(int trial=0;trial<2000;++trial) {
+            DrawSnapshot base{1,std::vector<uint8_t>(scan_rng()%4096)}, frame{2,{}};
+            for(auto& byte:base.bytes)byte=uint8_t(scan_rng());
+            frame.bytes=base.bytes;
+            if(trial%3==0)frame.bytes.resize(scan_rng()%4096);
+            for(int j=0;j<trial%90 && !frame.bytes.empty();++j)frame.bytes[scan_rng()%frame.bytes.size()]=uint8_t(scan_rng());
+            assert(encode_draw_frame(frame,&base)==scalar_ranges(frame,base));
+        }
+        State compression_modes;
+        const auto legacy=compression_modes.add_client(), compressed=compression_modes.add_client();
+        compression_modes.set_client_capabilities(legacy,kDrawIPCapability|kDrawMotionCapability);
+        compression_modes.set_client_capabilities(compressed,kDrawIPCapability|kDrawMotionCapability|kDrawLz4Capability);
+        auto scene=geometry(1000);
+        compression_modes.publish_draw_frame(scene);
+        assert(queued(compression_modes,legacy)[0]==13);
+        assert(queued(compression_modes,compressed)[0]==0x22);
+        compression_modes.acknowledge_draw(legacy,1);compression_modes.acknowledge_draw(compressed,1);
+        for(size_t i=0;i<1000;++i)scene[41+i*20+16]^=0x12;
+        compression_modes.publish_draw_frame(scene);
+        assert(queued(compression_modes,compressed)[0]==0x23);
+        assert(word(queued(compression_modes,compressed),5)==1);
+        compression_modes.acknowledge_draw(compressed,999);
+        compression_modes.acknowledge_draw(compressed,0);
+        compression_modes.publish_draw_frame(scene);
+        assert(queued(compression_modes,compressed)[0]==0x22);
+
+        auto original=geometry(300);
+        auto packed=quantize_draw_frame(original);
+        assert(packed[0]==0x21 && packed.size()==original.size()-300*8+8);
+        auto invalid=original;set_float(invalid,61,10000.f);
+        assert(quantize_draw_frame(invalid)==invalid);
+        invalid=original;set_float(invalid,49,-0.01f);
+        assert(quantize_draw_frame(invalid)==invalid);
+        State modes; auto exact=modes.add_client(),quant=modes.add_client();
+        modes.set_client_capabilities(exact,kDrawIPCapability);
+        modes.set_client_capabilities(quant,kDrawIPCapability|kDrawQuantizedCapability);
+        modes.publish_draw_frame(original);
+        assert(queued(modes,exact)[13]==1 && queued(modes,quant)[13]==0x21);
+        modes.acknowledge_draw(exact,1);modes.acknowledge_draw(quant,1);
+        modes.publish_draw_frame(moved(original,1,1));
+        assert(word(queued(modes,exact),5)==1 && word(queued(modes,quant),5)==1);
+    }
     if(argc>1) {
         // Cross-language fixture: compare the JS reconstruction byte-for-byte
         // to original C++ geometry, including growth, shrinkage and empty UI.
@@ -99,6 +237,11 @@ int main(int argc,char**) {
     DrawSnapshot translated{4,moved(a.bytes,15.25f,-8.5f)};
     auto motion=encode_draw_frame(translated,&a,true);
     assert(motion[0]==0x0f && motion.size()==29);
+    assert(encode_draw_frame(translated,&a,true,true)==motion);
+    DrawSnapshot incompressible{5,std::vector<uint8_t>(64*1024)};
+    std::mt19937 random_bytes(819);
+    for(auto& byte:incompressible.bytes)byte=uint8_t(random_bytes());
+    assert(encode_draw_frame(incompressible,nullptr,true,true)==encode_draw_frame(incompressible,nullptr));
     assert(encode_draw_frame(translated,&a)[0]!=0x0f); // capability fallback
     State modes;
     auto old_client=modes.add_client(),new_client=modes.add_client();

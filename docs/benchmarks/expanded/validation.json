@@ -1,0 +1,191 @@
+{
+  "codec_round_trips": [
+    {
+      "algorithm": "imgui-ws",
+      "scene": "moving",
+      "frames": 120,
+      "warmup": 30,
+      "passed": true
+    },
+    {
+      "algorithm": "imgui-ws",
+      "scene": "dynamic",
+      "frames": 120,
+      "warmup": 30,
+      "passed": true
+    },
+    {
+      "algorithm": "imgui-ws",
+      "scene": "plots",
+      "frames": 120,
+      "warmup": 30,
+      "passed": true
+    },
+    {
+      "algorithm": "imgui-ws",
+      "scene": "tables",
+      "frames": 120,
+      "warmup": 30,
+      "passed": true
+    },
+    {
+      "algorithm": "imgui-ws",
+      "scene": "topology",
+      "frames": 120,
+      "warmup": 30,
+      "passed": true
+    },
+    {
+      "algorithm": "imgui-ws",
+      "scene": "dense",
+      "frames": 120,
+      "warmup": 30,
+      "passed": true
+    },
+    {
+      "algorithm": "netImgui",
+      "scene": "moving",
+      "frames": 120,
+      "warmup": 30,
+      "passed": true
+    },
+    {
+      "algorithm": "netImgui",
+      "scene": "dynamic",
+      "frames": 120,
+      "warmup": 30,
+      "passed": true
+    },
+    {
+      "algorithm": "netImgui",
+      "scene": "plots",
+      "frames": 120,
+      "warmup": 30,
+      "passed": true
+    },
+    {
+      "algorithm": "netImgui",
+      "scene": "tables",
+      "frames": 120,
+      "warmup": 30,
+      "passed": true
+    },
+    {
+      "algorithm": "netImgui",
+      "scene": "topology",
+      "frames": 120,
+      "warmup": 30,
+      "passed": true
+    },
+    {
+      "algorithm": "netImgui",
+      "scene": "dense",
+      "frames": 120,
+      "warmup": 30,
+      "passed": true
+    },
+    {
+      "algorithm": "imgui-quic-plane20-sub",
+      "scene": "moving",
+      "frames": 120,
+      "warmup": 30,
+      "passed": true
+    },
+    {
+      "algorithm": "imgui-quic-plane20-sub",
+      "scene": "dynamic",
+      "frames": 120,
+      "warmup": 30,
+      "passed": true
+    },
+    {
+      "algorithm": "imgui-quic-plane20-sub",
+      "scene": "plots",
+      "frames": 120,
+      "warmup": 30,
+      "passed": true
+    },
+    {
+      "algorithm": "imgui-quic-plane20-sub",
+      "scene": "tables",
+      "frames": 120,
+      "warmup": 30,
+      "passed": true
+    },
+    {
+      "algorithm": "imgui-quic-plane20-sub",
+      "scene": "topology",
+      "frames": 120,
+      "warmup": 30,
+      "passed": true
+    },
+    {
+      "algorithm": "imgui-quic-plane20-sub",
+      "scene": "dense",
+      "frames": 120,
+      "warmup": 30,
+      "passed": true
+    },
+    {
+      "algorithm": "imgui-quic-meshopt20",
+      "scene": "moving",
+      "frames": 120,
+      "warmup": 30,
+      "passed": true
+    },
+    {
+      "algorithm": "imgui-quic-meshopt20",
+      "scene": "dynamic",
+      "frames": 120,
+      "warmup": 30,
+      "passed": true
+    },
+    {
+      "algorithm": "imgui-quic-meshopt20",
+      "scene": "plots",
+      "frames": 120,
+      "warmup": 30,
+      "passed": true
+    },
+    {
+      "algorithm": "imgui-quic-meshopt20",
+      "scene": "tables",
+      "frames": 120,
+      "warmup": 30,
+      "passed": true
+    },
+    {
+      "algorithm": "imgui-quic-meshopt20",
+      "scene": "topology",
+      "frames": 120,
+      "warmup": 30,
+      "passed": true
+    },
+    {
+      "algorithm": "imgui-quic-meshopt20",
+      "scene": "dense",
+      "frames": 120,
+      "warmup": 30,
+      "passed": true
+    }
+  ],
+  "ctest": {
+    "passed": 6,
+    "failed": 0
+  },
+  "browser_suites": [
+    "draw_ip",
+    "compressed_draw",
+    "quantized_draw",
+    "webtransport"
+  ],
+  "native_integration": "Passed default compression mode: auth/origin, reliable input, reordered/dropped frames, recovery, bootstrap, ACK window, reconnect, split records, bounds and input continuation.",
+  "scan_equivalence": "All seven complete wire fixture streams match, and 2000 randomized scalar-reference checks pass.",
+  "limits": [
+    "RemoteImGui full viewer round trip untested",
+    "No ARM performance measurement",
+    "No browser GPU presentation timing",
+    "Research candidates not negotiated live wire formats"
+  ],
+  "source_sha256": "b7e69766ec3cedf92032b17a5a72e7ad72f1e367239b934fc8ce15c7d1bd50d9"
+}

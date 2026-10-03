@@ -1,0 +1,42 @@
+{
+  "trials": 2,
+  "seconds": 8,
+  "shuffle_seed": 42,
+  "rate_Mbit_s": 2,
+  "mtu": 1500,
+  "profiles": [
+    "local",
+    "100ms-1pct",
+    "300ms-3pct",
+    "100ms-5pct"
+  ],
+  "receiver_websockets": "14.2",
+  "upstream": {
+    "imgui-ws": {
+      "url": "https://github.com/ggerganov/imgui-ws.git",
+      "commit": "5e51bbf43a50d5f2c53124ab33f8740fa3f99b70"
+    },
+    "netImgui": {
+      "url": "https://github.com/sammyfreg/netImgui.git",
+      "commit": "bf471d8458d1841bfea94fe07b6b89f630a8ba7c"
+    },
+    "remoteimgui": {
+      "url": "https://github.com/JordiRos/remoteimgui.git",
+      "commit": "fc6b8de10bdb7f3e38b53a1a8357f8df391ebc07"
+    }
+  },
+  "baseline_draw_source_sha256": "854e84178ef6a02b300f210cedc351e884e510702f1da8595eaecdbd0dec6b63",
+  "script_sha256": {
+    "tools/benchmarks/comparison/network.py": "3854ebeac12524ad12722ee696ad42ac40a5e5c643b12bf24deb6efef0ee1dd3",
+    "tools/benchmarks/transport.py": "1d06b5bedd48f0d602be042fe774641aa8c5b1695017af7d1e305371ad418a06",
+    "tools/benchmarks/comparison/scenes.hpp": "433a332d98485a80415e3723a5ff31cf8af491634548280cb874fc11b79bef92",
+    "tools/benchmarks/comparison/ws_host.cpp": "56cc1d1f9dda150af086b5b49bf30e56e2b67661003886a8b8958884cfcf1bac"
+  },
+  "imgui_ws_submodules": [
+    "-fa2b318dd6190852a6fe7ebc952b6551e93899e0 third-party/imgui/imgui",
+    " ea0528467cc90ff401e4ba6f926e54fee8cc0ce8 third-party/incppect (heads/master)",
+    " 8f7d642f3ff7d9eb6ea7ee565afe5791c580fd73 third-party/incppect/third_party/uWebSockets (v0.17.6)",
+    " 2ed0584e0b7fac11a80886d36903517e3a5ef9c3 third-party/incppect/third_party/uWebSockets/uSockets (v0.4.0-2-g2ed0584)"
+  ],
+  "host_instrumentation": "Shared scene plus generation-time and consumed-pointer-sequence markers. No fanout admission override in network comparison."
+}

@@ -1,0 +1,69 @@
+{
+  "ctest": {
+    "passed": 6,
+    "failed": 0
+  },
+  "frontend_suites": [
+    "draw_ip",
+    "compressed_draw",
+    "planar_draw",
+    "quantized_draw",
+    "webtransport",
+    "dev_server",
+    "clipboard_shortcuts",
+    "large_clipboard_batch",
+    "media_viewer"
+  ],
+  "quantized_fixtures": {
+    "frames": 450,
+    "scales": [
+      16,
+      4,
+      1
+    ],
+    "max_position_error": [
+      0.031179428100585938,
+      0.1246337890625,
+      0.4997429847717285
+    ],
+    "unchanged_metadata": true,
+    "mixed_client_precision": true
+  },
+  "planar_fixtures": {
+    "frames": 240,
+    "lane_widths": [
+      12,
+      20
+    ],
+    "aged_bases": true,
+    "precision_transitions": true,
+    "malformed_bounds": true,
+    "presentation_before_ack": true
+  },
+  "native_modes": {
+    "integer": "passed",
+    "quarter": "passed",
+    "fine": "passed",
+    "legacy exact, planar disabled": "passed",
+    "integer, LZ4 disabled": "passed"
+  },
+  "browser_visual": {
+    "rendered": true,
+    "console_warnings_errors": 0,
+    "precision": "integer"
+  },
+  "network_cases": 16,
+  "limitations": [
+    "No ARM timing",
+    "No actual browser end-to-end FPS measurement",
+    "No complete RemoteImGui viewer or netImgui network comparison"
+  ],
+  "source_sha256": {
+    "src/draw_protocol.cpp": "62d7689b0ef51ed86d05daf2529f56c82f1d6a44dded625b86a0910abb32c6c5",
+    "src/state.cpp": "271a505c5aa6a4b9298c05bbfc8294ea22197f39f30114e1acba93af5216ba30",
+    "frontend/imgui_quic_draw.js": "14d5483295ebb1f66d4b5da7bbacbeb5aace3291c62aff3e0bd01fa4cdd0e101",
+    "frontend/imgui_quic.js": "c784be9fc30ece959717c762fd9d1b807eaa609e1e4a25cc6cd118884d7307a5",
+    "frontend/imgui_quic_transport.js": "3a9ab318cab9c624cc738f20e0759ffcf501c8641c2a99a6e3682a3172a89d37",
+    "transport/quiche/server.cc": "38cdf49280bbe42276e79051caa66cf977b18158d78306c1bfcebf35d89308b2"
+  }
+}

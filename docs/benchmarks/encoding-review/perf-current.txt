@@ -1,0 +1,19 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 3K of event 'cpu-clock:u'
+# Event count (approx.): 813500000
+#
+# Overhead  Symbol                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          IPC   [IPC Coverage]
+# ........  ..............................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................  ....................
+#
+    81.22%  [.] imgui_quic_core::encode_ranges(imgui_quic_core::DrawSnapshot const&, imgui_quic_core::DrawSnapshot const*, unsigned long)                                                                                                                                                                                                                                                                                                                                                                                                                                                                   -      -            
+     4.06%  [.] ImFont::RenderText(ImDrawList*, float, ImVec2 const&, unsigned int, ImVec4 const&, char const*, char const*, float, int)                                                                                                                                                                                                                                                                                                                                                                                                                                                                    -      -            
+     2.83%  [.] void std::vector<unsigned char, std::allocator<unsigned char> >::_M_range_insert<__gnu_cxx::__normal_iterator<unsigned char const*, std::vector<unsigned char, std::allocator<unsigned char> > > >(__gnu_cxx::__normal_iterator<unsigned char*, std::vector<unsigned char, std::allocator<unsigned char> > >, __gnu_cxx::__normal_iterator<unsigned char const*, std::vector<unsigned char, std::allocator<unsigned char> > >, __gnu_cxx::__normal_iterator<unsigned char const*, std::vector<unsigned char, std::allocator<unsigned char> > >, std::forward_iterator_tag) [clone .isra.0]  -      -            
+
+
+#
+# (Tip: Show individual samples with: perf script)
+#

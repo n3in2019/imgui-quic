@@ -9,7 +9,7 @@ const {Records,MixedReceiver,MixedSocket,splitMessages,create}=ctx.window.ImGuiT
 const put=(b,o,n)=>new DataView(b.buffer).setUint32(o,n,true);
 const frame=(id,epoch=1,barrier=0)=>{const b=new Uint8Array(22);b[0]=2;put(b,1,epoch);put(b,5,barrier);b[9]=14;put(b,10,id);return b;};
 const replies=[],delivered=[];
-const r=new MixedReceiver(msg=>{delivered.push(msg);if([13,14,15].includes(msg[0]))r.ack(new DataView(msg.buffer).getUint32(1,true));},msg=>replies.push(msg));
+const r=new MixedReceiver(msg=>{delivered.push(msg);if([13,14,15,0x22,0x23,0x26,0x27].includes(msg[0]))r.ack(new DataView(msg.buffer).getUint32(1,true));},msg=>replies.push(msg));
 r.receive(frame(5),true);r.receive(frame(3),true);r.receive(frame(5),true);
 assert.equal(delivered.length,1);assert.equal(r.frame,5);
 // Resource barriers prevent use of both not-yet-delivered and obsolete textures.
@@ -24,6 +24,19 @@ r.receive(frame(9,2,1),true);assert.equal(r.frame,9);
 assert.equal(new DataView(r.ack(0).buffer).getUint32(1,true),2);
 assert.throws(()=>r.receive(control),/ordering/);
 assert.throws(()=>r.receive(new Uint8Array([6,1,0,0,0])),/ordering/);
+// Compressed I frames remain reliable; compressed P frames retain epoch,
+// prerequisite and monotonic presentation checks.
+const compressedP=frame(10,2,1);compressedP[9]=0x23;
+r.receive(compressedP,true);assert.equal(r.frame,10);
+r.receive(compressedP,true);assert.equal(r.frame,10);
+const compressedI=frame(11,2,1);compressedI[9]=0x22;
+assert.throws(()=>r.receive(compressedI,true),/kind/);
+r.receive(compressedI);assert.equal(r.frame,11);
+const planarP=frame(12,2,1);planarP[9]=0x27;
+r.receive(planarP,true);assert.equal(r.frame,12);
+const planarI=frame(13,2,1);planarI[9]=0x26;
+assert.throws(()=>r.receive(planarI,true),/kind/);
+r.receive(planarI);assert.equal(r.frame,13);
 const p=new Records(),outputs=[];
 for(const byte of [3,0,0,0,1,2,3,2,0,0,0,4,5])p.feed(new Uint8Array([byte]),x=>outputs.push([...x]));
 assert.deepEqual(outputs,[[1,2,3],[4,5]]);

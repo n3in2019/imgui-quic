@@ -372,12 +372,23 @@ function sendU32(type, value) {
     sendBytes(buf);
 }
 
-function sendHelloAck() {
+function sendHelloAck(serverCapabilities = 0) {
     let capabilities = 1 << 0; // WebGL baseline
     if (typeof Worker !== "undefined" && typeof OffscreenCanvas !== "undefined") capabilities |= 1 << 1;
     if (globalThis.crossOriginIsolated && typeof SharedArrayBuffer !== "undefined") capabilities |= 1 << 2;
     if (navigator.gpu) capabilities |= 1 << 3;
     if (drawTransport) capabilities |= (1 << 4) | (1 << 5);
+    if (drawTransport && (serverCapabilities & (1 << 7))) capabilities |= 1 << 7;
+    const options = new URLSearchParams(globalThis.location?.hash?.slice(1) || "");
+    const precision = options.get("draw-precision") ||
+        (options.get("draw-quantized") === "0" ? "exact" : options.get("draw-quantized") === "1" ? "fine" : "integer");
+    if (drawTransport && precision !== "exact") {
+        const bit = precision === "fine" ? 6 : precision === "quarter" ? 8 : 9;
+        if (serverCapabilities & (1 << bit)) capabilities |= 1 << bit;
+        else if (bit === 9 && (serverCapabilities & (1 << 8))) capabilities |= 1 << 8;
+        else if (serverCapabilities & (1 << 6)) capabilities |= 1 << 6;
+    }
+    if (drawTransport && (serverCapabilities & (1 << 10))) capabilities |= 1 << 10;
     const buf = new ArrayBuffer(9);
     const dv = new DataView(buf);
     dv.setUint8(0, 0x1a);
@@ -478,7 +489,7 @@ function connect() {
                 console.log("[imgui_quic]", statusEl.textContent);
                 reconnectDelay = 1000;
                 drawTransport = true;
-                sendHelloAck();
+                sendHelloAck(caps);
                 // Synchronize client state after the protocol acknowledgement;
                 // the server deliberately sends no state before negotiation.
                 resize();
@@ -504,6 +515,10 @@ function connect() {
             }
             case 0x0d:
             case 0x0e:
+            case 0x22:
+            case 0x23:
+            case 0x26:
+            case 0x27:
             case 0x0f: {
                 if (!drawTransport) break;
                 try {

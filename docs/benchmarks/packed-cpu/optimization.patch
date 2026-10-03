@@ -1,0 +1,61 @@
+--- src/draw_protocol.cpp
++++ src/draw_protocol.cpp
+@@ -160,6 +160,23 @@
+     }
+     return off==b.size();
+ }
++template<size_t Stride>
++void planar_residual(const std::vector<uint8_t>& bytes, const DrawSnapshot* base,
++                     std::vector<uint8_t>& residual) {
++    size_t destination=0;
++    const size_t common=base?std::min(bytes.size(),base->bytes.size()):0;
++    // Separate the shared prefix from zero extension so the hot lane loop has
++    // no per-byte baseline/null/bounds branches, including topology changes.
++    for(size_t lane=0;lane<Stride;++lane) {
++        size_t i=lane;
++        if(base) {
++            for(;i<common;i+=Stride)
++                residual[destination++]=uint8_t(bytes[i]-base->bytes[i]);
++        }
++        for(;i<bytes.size();i+=Stride)
++            residual[destination++]=bytes[i];
++    }
++}
+ bool sampled_attributes_changed(const std::vector<uint8_t>& a,const std::vector<uint8_t>& b) {
+     if(a.size()!=b.size() || a.size()<29 || a[0]!=b[0] || read_u32(a,25)!=read_u32(b,25)) return true;
+     const bool packed=a[0]==0x21 || a[0]==0x24 || a[0]==0x25;
+@@ -188,6 +205,9 @@
+     size_t length=bytes.size()+ranges.size()*8;
+     for(const auto& range:ranges) length-=size_t(range.count)*8;
+     if(length>=bytes.size()) return bytes;
++    // Supported scales are powers of two: multiplying by their reciprocal
++    // is exact, and avoids two runtime divisions for every vertex.
++    const double inverse_scale=1.0/scale, max_error=0.5*inverse_scale;
+     std::vector<uint8_t> packed(length);
+     std::memcpy(packed.data(),bytes.data(),29);
+     packed[0]=scale==16?0x21:scale==4?0x24:0x25;
+@@ -212,7 +232,7 @@
+                 if(!std::isfinite(relative) || relative<-32769 || relative>32768) return bytes;
+                 const int q=int(relative+(relative>=0?0.5:-0.5));
+                 if(q<-32768 || q>32767 ||
+-                   std::abs(double(float(double(origin)+double(q)/scale))-v)>0.5/scale) return bytes;
++                   std::abs(double(float(double(origin)+double(q)*inverse_scale))-v)>max_error) return bytes;
+                 u16(uint16_t(int16_t(q)));
+             }
+             for(int axis=0;axis<2;++axis) {
+@@ -309,12 +329,9 @@
+     // a missed opportunity affects size only, never reconstructed geometry.
+     if(base && !sampled_attributes_changed(frame.bytes,base->bytes)) return best;
+     const size_t stride=frame.bytes[0]==1?20:12;
+-    size_t destination=0;
+-    for(size_t lane=0;lane<stride;++lane) {
+-        for(size_t i=lane;i<frame.bytes.size();i+=stride) {
+-            residual[destination++]=uint8_t(frame.bytes[i]-(base && i<base->bytes.size()?base->bytes[i]:0));
+-        }
+-    }
++    // Fixed strides let the compiler specialize address calculations.
++    if(stride==20) planar_residual<20>(frame.bytes,base,residual);
++    else planar_residual<12>(frame.bytes,base,residual);
+     // Use the current winner as a bounded compressor destination. A candidate
+     // that cannot fit is discarded without growing another worst-case buffer.
+     std::vector<uint8_t> planar(best.size());
