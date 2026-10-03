@@ -70,7 +70,9 @@ async def integration():
             await wait(lambda:client.frames,client)
             await wait(lambda:'hover' in observed,client)
             initial = client.frames[-1][2]
-            assert client.frames[0][0] == 13
+            assert client.frames[0][0] in ((0x22,0x26) if os.environ.get("IMGUI_QUIC_TEST_LZ4","1")=="1" else (13,))
+            if os.environ.get("IMGUI_QUIC_TEST_QUANTIZED")=="1": assert client.quantized_frames > 0
+            if os.environ.get('IMGUI_QUIC_TEST_PRECISION','exact')!='exact':assert client.quantized_frames>0
             # Native popup interactions traverse reliable control and real QUIC.
             client.key(561)
             await wait(lambda:client.frames[-1][2]>initial,client)
@@ -98,7 +100,7 @@ async def integration():
                 await asyncio.sleep(.025)
             await wait(lambda:client.resets>before,client)
             client.drop = False
-            await wait(lambda:client.frames[-1][0]==13,client)
+            await wait(lambda:client.frames[-1][0] in (13,0x22,0x26),client)
             assert not client.errors,client.errors
             print(f'Native QUIC integration passed: {len(client.frames)} frames, {client.datagrams} datagrams, '
                   'origin/auth rejection, reliable popup input, reordered/dropped P frames, recovery')
@@ -136,11 +138,11 @@ async def integration():
         async with connect('127.0.0.1',port+1000,configuration=client_config,create_protocol=Client) as again:
             again.start(options.origin[0],options.token)
             await wait(lambda:again.frames,again)
-            assert again.frames[0][0]==13 and again.textures
+            assert again.frames[0][0] in (13,0x22,0x26) and again.textures
             count=len(again.frames)
             again.send(b'\x07'+pack('<II',again.epoch,0))
             await wait(lambda:again.resets and len(again.frames)>count,again)
-            assert again.frames[-1][0]==13
+            assert again.frames[-1][0] in (13,0x22,0x26)
         print('Native session isolation, reconnect and explicit recovery passed')
         # The C++ incremental reader must accept split headers and bodies without
         # treating a partial record as malformed or dispatching it early.

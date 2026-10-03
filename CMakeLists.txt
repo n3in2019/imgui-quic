@@ -5,6 +5,7 @@ project(imgui_quic VERSION 0.1.0 LANGUAGES CXX)
 
 set(CORE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 include(cmake/Dependencies.cmake)
+include(cmake/Lz4.cmake)
 
 find_package(Threads REQUIRED)
 include(GNUInstallDirs)
@@ -12,6 +13,7 @@ include(CMakePackageConfigHelpers)
 # --- Core library ---------------------------------------------------------------
 
 add_library(imgui_quic_core_cpp
+    "${IMGUI_QUIC_LZ4_DIR}/lib/lz4.c"
     src/draw_protocol.cpp
     src/state.cpp
     src/quic.cpp
@@ -32,8 +34,13 @@ add_library(imgui_quic::core ALIAS imgui_quic_core_cpp)
 set_target_properties(imgui_quic_core_cpp PROPERTIES EXPORT_NAME core)
 target_compile_features(imgui_quic_core_cpp PUBLIC cxx_std_17)
 
+option(IMGUI_QUIC_FORCE_SCALAR_QUANTIZATION "Use portable scalar draw quantization" OFF)
+if(IMGUI_QUIC_FORCE_SCALAR_QUANTIZATION)
+    target_compile_definitions(imgui_quic_core_cpp PRIVATE IMGUI_QUIC_FORCE_SCALAR_QUANTIZATION=1)
+endif()
+
 target_include_directories(imgui_quic_core_cpp
-    PRIVATE "${CORE_DIR}/src"
+    PRIVATE "${CORE_DIR}/src" "${IMGUI_QUIC_LZ4_DIR}/lib"
     PUBLIC
         $<BUILD_INTERFACE:${CORE_DIR}/include>
         $<BUILD_INTERFACE:${IMGUI_DIR}>

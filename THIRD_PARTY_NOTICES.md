@@ -14,6 +14,18 @@ revision `b61e56346a92cfcaf1f43a545ca37b0b32239654` (version 1.92.8) when
 version used for the committed generated bindings. If redistributed with Dear
 ImGui sources or binaries, keep the Dear ImGui MIT license notice.
 
+## LZ4
+
+- Project: https://github.com/lz4/lz4
+- License: BSD-2-Clause (library)
+- Copyright: Copyright (C) 2011-2023, Yann Collet
+
+The core builds LZ4 1.10.0 at revision
+`ebb370ca83af193212df4dcbadcc5d87bc0de2f0`, fetched into `third_party/lz4`.
+Redistribute its license, installed as `share/doc/imgui_quic/LZ4_LICENSE`, with
+source or binary distributions containing the core. The browser implements the
+raw block decoder directly and does not bundle upstream LZ4 JavaScript code.
+
 ## dear_bindings
 
 - Project: https://github.com/dearimgui/dear_bindings
@@ -42,8 +54,8 @@ Redistribute that notice file with `libimgui_quic_quiche.so`.
 
 ## Development and benchmark dependencies
 
-The optional C++ development launcher invokes the system OpenSSL CLI to prepare
-local certificates. aioquic
-1.3.0 (BSD-3-Clause) is an independent test and benchmark client. These packages are
-not linked into or required by the running native server. Retain their upstream
+The optional C++ development launcher links system OpenSSL libcrypto to prepare
+local certificates; preserve the notices for the redistributed OpenSSL version.
+aioquic 1.3.0 (BSD-3-Clause) is an independent test and benchmark client and is not
+linked into or required by the running native server. Retain their upstream
 notices when redistributing a development environment.

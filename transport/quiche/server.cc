@@ -150,7 +150,7 @@ struct Peer : std::enable_shared_from_this<Peer> {
         put(assign, id);
         pending.push_back(std::move(assign));
         std::string hello("\x0aIMGW", 5);
-        put(hello, 49);
+        put(hello, 2033); // draw data, I/P, motion, packed geometry, LZ4 and planar
         pending.push_back(std::move(hello));
         session->SetDatagramMaxTimeInQueue(absl::Milliseconds(50));
     }
@@ -257,11 +257,11 @@ struct Peer : std::enable_shared_from_this<Peer> {
         writes.push_back(std::move(record));
     }
     void send_native(std::string_view m) {
-        if (uint8_t(m[0]) >= 13 && uint8_t(m[0]) <= 15) {
+        if ((uint8_t(m[0]) >= 13 && uint8_t(m[0]) <= 15) || m[0] == 0x22 || m[0] == 0x23 || m[0] == 0x26 || m[0] == 0x27) {
             const auto frame = word(m, 1);
             if (frame <= latest_ack || sent.size() >= 8)
                 throw std::runtime_error("frame window/wrap");
-            bool reliable = m[0] == 13 || m.size() + 9 > datagram_limit;
+            bool reliable = (m[0] == 13 || m[0] == 0x22 || m[0] == 0x26) || m.size() + 9 > datagram_limit;
             if (!reliable) {
                 std::string packet;
                 packet.reserve(9 + m.size());

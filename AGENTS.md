@@ -7,6 +7,7 @@ cmake -B build -DIMGUI_QUIC_BUILD_EXAMPLES=ON -DIMGUI_QUIC_BUILD_TESTS=ON
 cmake --build build
 ctest --test-dir build --output-on-failure
 node tests/browser/draw_ip.mjs
+node tests/browser/compressed_draw.mjs
 node tests/browser/clipboard_shortcuts.mjs
 node tests/browser/large_clipboard_batch.mjs
 node tests/browser/media_viewer.mjs
@@ -37,7 +38,8 @@ frontend tests require Node 22+.
 ## Draw wire protocol
 
 Little-endian. Capability hello `0x0a` carries magic IMGW and server bits:
-0 draw data, 4 I/P required, 5 motion deltas optional. Client assignment `0x06`
+0 draw data, 4 I/P required, 5 motion optional, 6 fine quantization, 7 LZ4,
+8 quarter quantization, 9 integer quantization, 10 planar subtraction/LZ4. Client assignment `0x06`
 contains a u32 ID. Capability ACK `0x1a` includes client ID then u32 bits;
 it must lead its input record, and trailing early input is discarded.
 Clients must advertise the I/P capability.
@@ -48,12 +50,35 @@ patches (offset u32, byte count u32, bytes). Copy baseline, resize, apply patche
 Motion P `0x0f`: same header, motion count u32, then list index u32/dx f32/dy f32
 records, followed by residual patches. Only position floats are translated;
 residual patches restore exact original bytes. Choose motion only if smaller.
+Compressed I `0x22` / P `0x23`: same 13-byte header, then a raw LZ4 block.
+I uses baseline zero; P compresses current XOR acknowledged baseline, with zero
+extension and output truncation. Declared decoded length remains bounded to
+16 MiB. Tiny exact packets (<=512 bytes) skip compression; larger updates choose
+between LZ4 and bounded exact encoding. Compressed I stays reliable/single-flight.
+Both native and browser transport dispatch must recognize the compressed types.
+Run `node tests/browser/compressed_draw.mjs`; preserve exact legacy negotiation.
+Planar I `0x26` / P `0x27`: 13-byte header, lane width u8 (12/20), raw LZ4
+of lane-transposed modulo-256 byte subtraction. Undo lanes and add the ACKed
+baseline. Verify width matches restored geometry. I stays reliable/single-flight.
+Try only for bulk packets (>=4096 bytes); stable position/UV samples skip it.
+Run `node tests/browser/planar_draw.mjs`; preserve resource/epoch/ACK invariants.
 
 Canonical geometry starts with `0x01`, six f32 values (DisplayPos, DisplaySize,
 FramebufferScale), list count u32. Each list has vertex/index/command counts u32,
 20-byte vertices (pos, UV, color), u32 indices, and 36-byte commands (clip 4*f32,
 texture u64, index offset u32, vertex offset u32, element count u32).
 Native renderer callbacks are not transported.
+
+Packed `0x21`/`0x24`/`0x25` geometry uses the same frame header, then counts, two f32
+origins, 12-byte vertices (i16 x/y at 1/16, 1/4 or integer units, u16 UVs, RGBA8), and
+unchanged indices/commands. Keep packed bytes as ACK baselines; expand a separate
+canonical buffer for rendering. Whole-frame fallback preserves unsupported
+ranges. Browser default is integer; `draw-precision=exact|fine|quarter|integer`
+selects precision. Only request advertised bits, with fine/exact legacy fallback.
+Run `node tests/browser/quantized_draw.mjs` after changing this path.
+SSE2 quantization is selected at compile time; retain the scalar fallback and
+`IMGUI_QUIC_FORCE_SCALAR_QUANTIZATION` build option. The quantization CTest
+compares against an independently compiled scalar implementation.
 
 Client `0x1d` + client ID u32 + frame ID u32 acknowledges a rendered frame;
 ID zero requests recovery textures and an I frame. Never reference an

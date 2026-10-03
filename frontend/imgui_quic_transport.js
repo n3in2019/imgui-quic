@@ -46,7 +46,7 @@
                 if (epoch !== this.epoch || barrier !== this.control) return;
                 const id = v.getUint32(10, true);
                 if (id <= this.frame) return;
-                if (![13,14,15].includes(data[9]) || (datagram && data[9] === 13))
+                if (![13,14,15,0x22,0x23,0x26,0x27].includes(data[9]) || (datagram && [13,0x22,0x26].includes(data[9])))
                     throw Error("draw transport kind");
                 this.deliver(data.slice(9));
             } else throw Error("transport message kind");

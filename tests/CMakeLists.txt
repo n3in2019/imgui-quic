@@ -41,3 +41,18 @@ add_executable(server_config_tests server_config_tests.cpp)
 target_link_libraries(server_config_tests PRIVATE imgui_quic::core)
 target_compile_options(server_config_tests PRIVATE -UNDEBUG)
 add_test(NAME server_config COMMAND server_config_tests)
+
+# Compile the portable quantizer independently to verify SIMD byte equivalence.
+add_library(draw_quantization_scalar OBJECT ../src/draw_protocol.cpp)
+target_compile_features(draw_quantization_scalar PRIVATE cxx_std_17)
+target_include_directories(draw_quantization_scalar PRIVATE
+    ../src ../include "${IMGUI_DIR}" "${IMGUI_QUIC_LZ4_DIR}/lib")
+target_compile_definitions(draw_quantization_scalar PRIVATE
+    imgui_quic_core=imgui_quic_scalar_reference
+    IMGUI_QUIC_FORCE_SCALAR_QUANTIZATION=1 IMGUI_USER_CONFIG="imconfig.h")
+add_executable(quantization_tests quantization_tests.cpp
+    $<TARGET_OBJECTS:draw_quantization_scalar>)
+target_link_libraries(quantization_tests PRIVATE imgui_quic_core_cpp)
+target_include_directories(quantization_tests PRIVATE ../src)
+target_compile_options(quantization_tests PRIVATE -UNDEBUG)
+add_test(NAME quantization COMMAND quantization_tests)

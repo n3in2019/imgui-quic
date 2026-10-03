@@ -1,6 +1,7 @@
 """Independent aioquic client for the native WebTransport interoperability tests."""
 import asyncio
 import json
+import os
 import struct
 from aioquic.asyncio import QuicConnectionProtocol
 from aioquic.h3.connection import H3Connection
@@ -12,6 +13,47 @@ MAX_RECORD = 64 * 1024 * 1024 + 1024
 
 def record(data):
     return pack('<I',len(data))+data
+
+def expand_quantized(data):
+    scale={0x21:16,0x24:4,0x25:1}[data[0]]
+    result=bytearray(data[:29]);result[0]=1;offset=29
+    for _ in range(word(data,25)):
+        nv,ni,nc,ox,oy=struct.unpack_from('<IIIff',data,offset)
+        result.extend(data[offset:offset+12]);offset+=20
+        for _ in range(nv):
+            x,y,u,v,color=struct.unpack_from('<hhHHI',data,offset);offset+=12
+            result.extend(pack('<ffffI',ox+x/scale,oy+y/scale,u/65535,v/65535,color))
+        size=ni*4+nc*36;result.extend(data[offset:offset+size]);offset+=size
+    assert offset==len(data)
+    return result
+
+def decode_lz4(data,n):
+    assert 29 <= n <= 16*1024*1024
+    result=bytearray();at=0
+    def length(size):
+        nonlocal at
+        if size==15:
+            while True:
+                assert at<len(data)
+                byte=data[at];at+=1;size+=byte
+                assert size<=n
+                if byte!=255:break
+        return size
+    while at<len(data):
+        token=data[at];at+=1
+        size=length(token>>4)
+        assert at+size<=len(data) and len(result)+size<=n
+        result.extend(data[at:at+size]);at+=size
+        if at==len(data):
+            assert len(result)==n
+            return result
+        assert at+2<=len(data)
+        distance=data[at]|data[at+1]<<8;at+=2
+        assert 0<distance<=len(result)
+        size=length(token&15)+4
+        assert len(result)+size<=n
+        result.extend((result[-distance:] * ((size+distance-1)//distance))[:size])
+    raise ValueError('truncated LZ4')
 
 class Records:
     def __init__(self): self.buffer=bytearray()
@@ -42,6 +84,8 @@ class Client(QuicConnectionProtocol):
         self.control = 0
         self.last_frame = 0
         self.cache = {}
+        self.wire_cache = {}
+        self.quantized_frames = 0
         self.frames = []
         self.errors = []
         self.datagrams = 0
@@ -122,7 +166,10 @@ class Client(QuicConnectionProtocol):
             if msg[0] == 6:
                 self.client = word(msg,1)
             elif msg[0] == 10:
-                self.input(b'\x1a'+pack('<II',self.client,49))
+                mode=os.environ.get('IMGUI_QUIC_TEST_PRECISION','fine' if os.environ.get('IMGUI_QUIC_TEST_QUANTIZED')=='1' else 'exact')
+                quantized={'fine':64,'quarter':256,'integer':512,'exact':0}[mode]&word(msg,5)
+                if os.environ.get('IMGUI_QUIC_TEST_PLANAR','1')=='1':quantized|=word(msg,5)&1024
+                self.input(b'\x1a'+pack('<II',self.client,49 | (128 if os.environ.get('IMGUI_QUIC_TEST_LZ4','1')=='1' and word(msg,5)&128 else 0) | quantized))
             elif msg[0] == 2:
                 self.textures.add(struct.unpack_from('<Q',msg,1)[0])
             self.control = sequence
@@ -137,18 +184,35 @@ class Client(QuicConnectionProtocol):
             fid,base,n = struct.unpack_from('<III',msg,1)
             if fid <= self.last_frame:
                 return
-            if msg[0] == 13:
+            assert 29 <= n <= 16*1024*1024
+            if msg[0] in (0x26,0x27):
+                assert len(msg)>14 and msg[13] in (12,20)
+                assert (base==0) if msg[0]==0x26 else (base in self.wire_cache)
+                lanes=decode_lz4(msg[14:],n);decoded=bytearray(n);source=0
+                old=self.wire_cache[base] if base else b''
+                for lane in range(msg[13]):
+                    for i in range(lane,n,msg[13]):
+                        decoded[i]=(lanes[source]+(old[i] if i<len(old) else 0))&255;source+=1
+                assert msg[13]==(20 if decoded[0]==1 else 12)
+            elif msg[0] in (0x22,0x23):
+                assert (base==0) if msg[0]==0x22 else (base in self.wire_cache)
+                decoded=decode_lz4(msg[13:],n)
+                if msg[0]==0x23:
+                    old=self.wire_cache[base]
+                    common=min(n,len(old))
+                    decoded[:common]=(int.from_bytes(decoded[:common],'little') ^ int.from_bytes(old[:common],'little')).to_bytes(common,'little')
+            elif msg[0] == 13:
                 assert base == 0 and len(msg) == n+13
                 decoded = bytearray(msg[13:])
             else:
-                decoded = bytearray(self.cache[base][:n])
+                decoded = bytearray(self.wire_cache[base][:n])
                 decoded.extend(b'\0'*(n-len(decoded)))
                 off = 13
                 if msg[0] == 15:
                     ranges = []
                     at = 29
-                    for _ in range(word(self.cache[base],25)):
-                        nv,ni,nc = struct.unpack_from('<III',self.cache[base],at)
+                    for _ in range(word(self.wire_cache[base],25)):
+                        nv,ni,nc = struct.unpack_from('<III',self.wire_cache[base],at)
                         ranges.append((at+12,nv)); at += 12+nv*20+ni*4+nc*36
                     count = word(msg,13); off = 17
                     for _ in range(count):
@@ -161,10 +225,14 @@ class Client(QuicConnectionProtocol):
                     at,count = struct.unpack_from('<II',msg,off);off += 8
                     assert at+count <= n and off+count <= len(msg)
                     decoded[at:at+count] = msg[off:off+count];off += count
+            self.wire_cache[fid] = decoded
+            if decoded[0] in (0x21,0x24,0x25):
+                decoded = expand_quantized(decoded)
+                self.quantized_frames += 1
             assert decoded[0] == 1 and self.textures
             self.cache[fid] = decoded
             while len(self.cache)>9:
-                del self.cache[next(iter(self.cache))]
+                oldest=next(iter(self.cache));del self.cache[oldest];del self.wire_cache[oldest]
             self.last_frame = fid
             self.frames.append((msg[0],fid,word(decoded,25)))
             self.send(b'\x07'+pack('<II',self.epoch,fid))

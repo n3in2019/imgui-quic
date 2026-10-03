@@ -1,6 +1,6 @@
 // core.hpp — shared internal declarations for the pure-C++ ImGuiQuic core.
 //
-// The server streams acknowledged I/P draw frames (0x0d/0x0e/0x0f).
+// Acknowledged I/P draw frames: 0x0d/0x0e/0x0f, XOR/LZ4 0x22/0x23, planar 0x26/0x27.
 
 #pragma once
 
