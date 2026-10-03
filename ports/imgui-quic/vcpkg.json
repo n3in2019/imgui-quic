@@ -1,6 +1,6 @@
 {
   "name": "imgui-quic",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Dear ImGui web backend: streams native draw data to a WebGL browser using acknowledged I/P frames",
   "homepage": "https://github.com/n3in2019/imgui-quic",
   "license": "MIT",

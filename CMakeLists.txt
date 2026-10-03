@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(imgui_quic VERSION 0.1.0 LANGUAGES CXX)
+project(imgui_quic VERSION 0.2.0 LANGUAGES CXX)
 
 # Pure-C++ core (I/P draw transport) for ImGuiQuic.
 

@@ -3,7 +3,7 @@
 ## Supported versions
 
 ImGuiQuic is pre-1.0 software. Security fixes are applied to the latest code on
-the `development` branch; older revisions are not maintained separately.
+the `main` branch; older revisions are not maintained separately.
 
 ## Reporting a vulnerability
 
