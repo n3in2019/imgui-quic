@@ -27,13 +27,14 @@ class HeldAckClient(Client):
             super().send(data)
 
 async def integration():
-    cert = ROOT/'build/webtransport_dev/cert.pem'
-    key = ROOT/'build/webtransport_dev/key.pem'
+    credentials = Path(os.environ.get('IMGUI_QUIC_TEST_CREDENTIALS', ROOT/'build/webtransport_dev'))
+    cert = credentials/'cert.pem'
+    key = credentials/'key.pem'
     port = 14000 + __import__('os').getpid()%1000
     native = await asyncio.create_subprocess_exec(str(ROOT/'build/examples/example_core_cpp_draw'),
         env={**os.environ,'IMGW_GEOM_DEBUG':'1',
         'IMGUI_QUIC_CERT':str(cert),'IMGUI_QUIC_KEY':str(key),
-        'IMGUI_QUIC_TOKEN_FILE':str(ROOT/'build/webtransport_dev/token'),
+        'IMGUI_QUIC_TOKEN_FILE':str(credentials/'token'),
         'IMGUI_QUIC_ORIGINS':'http://127.0.0.1:8888','IMGUI_QUIC_PORT':str(port+1000)},stdout=asyncio.subprocess.DEVNULL,stderr=asyncio.subprocess.PIPE)
     async with asyncio.timeout(10):
         while True:
@@ -48,7 +49,7 @@ async def integration():
                 rect = [float(v) for v in match.groups()]
                 observed['hover'] = ((rect[0]+rect[2])/2,(rect[1]+rect[3])/2)
     log_task = asyncio.create_task(read_log())
-    options = SimpleNamespace(token=(ROOT/'build/webtransport_dev/token').read_text().strip(),
+    options = SimpleNamespace(token=(credentials/'token').read_text().strip(),
                               origin=['http://127.0.0.1:8888'],recovery_timeout=1.1)
     client_config = QuicConfiguration(is_client=True,alpn_protocols=H3_ALPN,max_datagram_frame_size=65536,
         max_data=2*MAX_RECORD,max_stream_data=2*MAX_RECORD)

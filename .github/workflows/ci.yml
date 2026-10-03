@@ -31,7 +31,7 @@ jobs:
           node-version: 22
 
       - name: Install QUICHE compiler dependencies
-        run: sudo apt-get update && sudo apt-get install -y clang libicu-dev openssl python3-venv
+        run: sudo apt-get update && sudo apt-get install -y clang libicu-dev libssl-dev python3-venv
 
       - name: Configure C++ core (fetches pinned Dear ImGui)
         run: cmake -B build -DIMGUI_QUIC_BUILD_EXAMPLES=ON -DIMGUI_QUIC_BUILD_TESTS=ON
@@ -80,7 +80,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install QUICHE compiler dependencies
-        run: sudo apt-get update && sudo apt-get install -y clang libicu-dev openssl python3-venv
+        run: sudo apt-get update && sudo apt-get install -y clang libicu-dev libssl-dev python3-venv
 
       # Builds the port from the checkout (IMGUI_QUIC_LOCAL_SOURCE_DIR, the
       # portfile's pre-release validation branch) and consumes it through a

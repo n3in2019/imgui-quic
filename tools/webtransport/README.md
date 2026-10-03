@@ -7,7 +7,7 @@ The native process owns only the QUIC listener. Frontend files are hosted separa
 ## Local development
 
 Requires Linux x86-64 or little-endian AArch64, CMake, a C++17 core compiler,
-Clang with C++20 support, ICU development files (`libicu-dev` on Ubuntu), and OpenSSL CLI for development credentials. Pinned Bazel 8.2.1 is downloaded with SHA-256 verification. The optional C++ development launcher uses the OpenSSL command-line tool for local certificates.
+Clang with C++20 support, ICU development files (`libicu-dev` on Ubuntu), and OpenSSL development libraries (`libssl-dev` on Ubuntu). Pinned Bazel 8.2.1 is downloaded with SHA-256 verification. The C++ development launcher generates local certificates and tokens automatically.
 
 ```bash
 cmake -B build -DIMGUI_QUIC_BUILD_EXAMPLES=ON -DIMGUI_QUIC_BUILD_TESTS=ON

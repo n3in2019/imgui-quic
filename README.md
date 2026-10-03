@@ -12,7 +12,8 @@ Requires Linux x86-64 or AArch64, Git, CMake 3.21+, a C++17 compiler,
 Clang with C++20 support, ICU development files. Dear ImGui and
 QUICHE are pinned and downloaded by the build; the first build takes longer.
 Use a WebTransport-capable browser with UDP access to the server.
-The C++ development launcher requires the OpenSSL CLI.
+Building the C++ development launcher requires OpenSSL development libraries
+(`libssl-dev` on Ubuntu). It generates local credentials automatically.
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DIMGUI_QUIC_BUILD_EXAMPLES=ON -DIMGUI_QUIC_BUILD_TESTS=ON
