@@ -79,7 +79,8 @@ jobs:
 
   vcpkg-port:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # Cold Debug and Release builds each compile the QUICHE dependency.
+    timeout-minutes: 75
 
     steps:
       - name: Check out repository
