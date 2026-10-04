@@ -85,6 +85,9 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Check offline vcpkg dependency contract
+        run: cmake -DWORK="$RUNNER_TEMP/vcpkg-port-contract" -P tests/vcpkg_port.cmake
+
       - name: Install QUICHE compiler dependencies
         run: sudo apt-get update && sudo apt-get install -y clang libicu-dev libssl-dev python3-venv
 
