@@ -79,11 +79,15 @@ jobs:
 
   vcpkg-port:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # Cold Debug and Release builds each compile the QUICHE dependency.
+    timeout-minutes: 75
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Check offline vcpkg dependency contract
+        run: cmake -DWORK="$RUNNER_TEMP/vcpkg-port-contract" -P tests/vcpkg_port.cmake
 
       - name: Install QUICHE compiler dependencies
         run: sudo apt-get update && sudo apt-get install -y clang libicu-dev libssl-dev python3-venv

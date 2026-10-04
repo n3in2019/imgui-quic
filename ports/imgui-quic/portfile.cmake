@@ -38,6 +38,16 @@ vcpkg_from_git(
 )
 file(COPY "${IMGUI_SOURCE_PATH}/" DESTINATION "${SOURCE_PATH}/third_party/imgui")
 
+# Pre-seed the pinned LZ4 sources before vcpkg configures Debug and Release
+# in parallel. Both configurations share SOURCE_PATH, so letting Lz4.cmake
+# initialize the same Git checkout concurrently races in git init/checkout.
+vcpkg_from_git(
+    OUT_SOURCE_PATH LZ4_SOURCE_PATH
+    URL "https://github.com/lz4/lz4.git"
+    REF "ebb370ca83af193212df4dcbadcc5d87bc0de2f0"
+)
+file(COPY "${LZ4_SOURCE_PATH}/" DESTINATION "${SOURCE_PATH}/third_party/lz4")
+
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
@@ -53,8 +63,9 @@ file(REMOVE_RECURSE
     "${CURRENT_PACKAGES_DIR}/debug/share")
 
 vcpkg_install_copyright(
-    COMMENT "ImGuiQuic is MIT licensed. It embeds Dear ImGui (MIT) and generated dear_bindings outputs (MIT)."
+    COMMENT "ImGuiQuic is MIT licensed. It embeds Dear ImGui (MIT), generated dear_bindings outputs (MIT), and LZ4 (BSD-2-Clause)."
     FILE_LIST
         "${SOURCE_PATH}/LICENSE"
         "${IMGUI_SOURCE_PATH}/LICENSE.txt"
+        "${LZ4_SOURCE_PATH}/lib/LICENSE"
 )
