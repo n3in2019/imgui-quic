@@ -7,6 +7,10 @@
 #include <csignal>
 #include <cstdlib>
 #include <thread>
+#include <atomic>
+#include <cstdio>
+#include <poll.h>
+#include <unistd.h>
 using Clock = std::chrono::steady_clock;
 volatile std::sig_atomic_t running = 1;
 void stop(int) { running = 0; }
@@ -19,7 +23,7 @@ int main(int argc, char** argv) {
     // only this benchmark's per-address admission limit, not the library default.
     const bool fanout=std::getenv("IMGW_BENCH_FANOUT")!=nullptr;
     if(!certificate.empty() && fanout) unsetenv("IMGUI_QUIC_CERT");
-    if (!certificate.empty()) setenv("IMGUI_QUIC_ORIGINS", "http://localhost", 1);
+    if (!certificate.empty() && !std::getenv("IMGUI_QUIC_ORIGINS")) setenv("IMGUI_QUIC_ORIGINS", "http://localhost", 1);
     const std::string scene=std::string(argv[1])=="0"?"moving":std::string(argv[1])=="1"?"dynamic":argv[1];
     const int fps = std::atoi(argv[2]);
     imgui_quic::Server app;
@@ -35,6 +39,23 @@ int main(int argc, char** argv) {
         if(imgui_quic_start(&transport)!=0)return 1;
     }
     std::signal(SIGTERM,stop);
+    // Benchmark-only side channel: one byte in, native steady_clock ns out.
+    // It never changes the WebTransport protocol or the render/ACK path.
+    std::atomic<bool> probing{true};
+    std::thread clock_probe;
+    if (std::getenv("IMGW_BENCH_CLOCK_STDIO")) clock_probe = std::thread([&] {
+        while (probing.load()) {
+            pollfd input{STDIN_FILENO, POLLIN, 0};
+            if (poll(&input, 1, 100) <= 0) continue;
+            char command;
+            if (read(STDIN_FILENO, &command, 1) != 1) break;
+            if (command != 'c') continue;
+            const auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                Clock::now().time_since_epoch()).count();
+            std::printf("%lld\n", static_cast<long long>(ns));
+            std::fflush(stdout);
+        }
+    });
     unsigned tick = 0;
     auto callback = app.on_render([&] {
         // Three vertex colors carry exact generation time and consumed input ID.
@@ -54,4 +75,6 @@ int main(int argc, char** argv) {
         next += std::chrono::nanoseconds(1000000000/fps);
         std::this_thread::sleep_until(next);
     }
+    probing.store(false);
+    if (clock_probe.joinable()) clock_probe.join();
 }

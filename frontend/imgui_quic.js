@@ -450,6 +450,7 @@ function connect() {
     };
 
     connection.onclose = () => {
+        window.ImGuiBenchmark?.error("transport closed");
         clientId = 0;
         pendingSends = [];
         statusEl.textContent = "WebTransport disconnected - retrying...";
@@ -522,16 +523,22 @@ function connect() {
             case 0x0f: {
                 if (!drawTransport) break;
                 try {
+                    const bench = window.ImGuiBenchmark;
+                    const decodeStart = bench ? performance.now() : undefined;
                     const decoded = drawDecoder.decode(data);
+                    const decodeEnd = bench ? performance.now() : undefined;
                     const parsed = parseDrawLists(decoded.bytes);
                     if (parsed.lists.some(list => list.cmds.some(cmd =>
                         cmd.elemCount && cmd.texId !== 4294967294 && !textures.has(cmd.texId)))) throw Error("missing draw texture");
                     lastDpx = parsed.dpx; lastDpy = parsed.dpy;
                     lastDsw = parsed.dsw; lastDsh = parsed.dsh;
-                    renderFromParsed(parsed);
+                    const sample = bench?.begin(decoded, evt, decodeStart, decodeEnd, gl);
+                    try { renderFromParsed(parsed); }
+                    finally { bench?.end(sample, gl); }
                     drawDecoder.commit(decoded);
                     sendDrawAck(decoded.id);
                 } catch (error) {
+                    window.ImGuiBenchmark?.error(error.message);
                     console.warn("[imgui_quic] requesting I frame:", error.message);
                     sendDrawAck(0);
                 }
