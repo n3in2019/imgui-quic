@@ -27,6 +27,7 @@
             this.epoch = 1; this.control = 0; this.frame = 0;
         }
         receive(data, datagram = false) {
+            const receivedAt = window.ImGuiBenchmark ? performance.now() : undefined;
             const v = new DataView(data.buffer, data.byteOffset, data.byteLength);
             if (!data.length) throw Error("empty transport record");
             if (data[0] === 1 && !datagram && data.length >= 6) {
@@ -48,7 +49,7 @@
                 if (id <= this.frame) return;
                 if (![13,14,15,0x22,0x23,0x26,0x27].includes(data[9]) || (datagram && [13,0x22,0x26].includes(data[9])))
                     throw Error("draw transport kind");
-                this.deliver(data.slice(9));
+                this.deliver(data.slice(9), receivedAt, datagram ? "datagram" : "stream");
             } else throw Error("transport message kind");
         }
         ack(id) {
@@ -82,7 +83,7 @@
             this.generation = 0; this.pointerSeq = 0; this.pointer = null;
             this.queuedBytes = 0; this.writes = Promise.resolve();
             this.datagramBusy = false; this.pendingPointer = null;
-            this.receiver = new MixedReceiver(bytes => this.onmessage?.({data:bytes.buffer}),
+            this.receiver = new MixedReceiver((bytes, receivedAt, path) => this.onmessage?.({data:bytes.buffer, receivedAt, path}),
                                              bytes => this.write(bytes));
             this.start();
         }

@@ -3,6 +3,8 @@
 The benchmark runs the native QUICHE host and an independent Python draw decoder
 inside an isolated network namespace. It measures exact I/P geometry at 30 FPS
 for a moving window and dynamic text. It does not measure browser WebGL/compositor time.
+For the separate real-Chromium harness, clock bounds, CPU/GPU timing and explicitly
+labeled RAF display proxies, see [browser end-to-end benchmark](browser/README.md).
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DIMGUI_QUIC_BUILD_BENCHMARKS=ON -DIMGUI_QUIC_BUILD_EXAMPLES=ON

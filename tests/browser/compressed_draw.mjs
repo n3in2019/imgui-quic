@@ -61,3 +61,15 @@ assert.equal(acks[0][0],new DataView(first.buffer).getUint32(1,true));assert(ack
 front.wire=badSize;vm.runInContext('connection.onmessage({data:wire.buffer})',front);
 assert.equal(acks.at(-1)[0],0);
 console.log(`Compressed draw: ${count} exact round trips, aged baselines, packed fallback, bounded LZ4 and presentation ACKs`,Object.fromEntries(kinds));
+// Opt-in observer brackets production rendering; ACK still follows CPU submit.
+const events=[];let clock=10;
+front.performance={now:()=>clock++};
+front.window.ImGuiBenchmark={begin(decoded,evt,start,end){
+    assert.equal(evt.receivedAt,9);assert(start<=end);events.push('begin');return {id:decoded.id};
+},end(sample){assert.equal(sample.id,new DataView(first.buffer).getUint32(1,true));events.push('end');},
+error(message){throw Error(message);}};
+front.sendDrawAck=id=>events.push(`ack:${id}`);
+front.wire=first;
+vm.runInContext('connection.onmessage({data:wire.buffer,receivedAt:9,path:"stream"})',front);
+assert.deepEqual(events,['begin','end',`ack:${new DataView(first.buffer).getUint32(1,true)}`]);
+console.log('Benchmark observer preserves production submit-before-ACK order');
