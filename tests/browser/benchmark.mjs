@@ -31,6 +31,8 @@ assert.equal(incomplete.metrics.parse_and_prepare_ms.n,0);
 assert.throws(()=>clockInterval([{...probe,start_ms:-Infinity}],110),/invalid/);
 assert.throws(()=>clockInterval([probe],NaN),/invalid/);
 assert.equal(summarize({...snap,start_ms:null},[probe],opt).status,'FAIL');
+assert.equal(summarize({...snap,start_ms:null},[probe],opt).duration_ms,null);
+assert.equal(summarize({...snap,start_ms:null},[probe],opt).fps,null);
 // Real observer callbacks with a deterministic browser/GL double, not performance evidence.
 let now=100, disjoint=false;
 const raf=[],deleted=[];

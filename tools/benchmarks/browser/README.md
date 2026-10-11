@@ -15,6 +15,19 @@ session for GPU/display-opportunity measurements. Record governor, temperatures,
 display refresh rate and driver version with the results; keep them fixed across
 comparisons. First QUICHE build requires network access.
 
+On an Ubuntu/Debian board, install build dependencies first (install the board's
+supported Chromium package separately, retaining its graphics integration):
+
+```bash
+sudo apt-get update
+sudo apt-get install -y git build-essential clang cmake ninja-build libicu-dev libssl-dev openssl python3
+git clone --branch feat/chromium-e2e-benchmark https://github.com/n3in2019/imgui-quic.git
+cd imgui-quic
+```
+
+Run from the logged-in desktop user with `DISPLAY`/`WAYLAND_DISPLAY` available.
+Do not run the board measurement as root. Node 22+ must already be on PATH.
+
 From the repository root:
 
 ```bash
@@ -22,9 +35,25 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
   -DIMGUI_QUIC_NATIVE_QUIC=ON -DIMGUI_QUIC_BUILD_BENCHMARKS=ON \
   -DIMGUI_QUIC_BUILD_TESTS=ON -DIMGUI_QUIC_BUILD_EXAMPLES=ON
 cmake --build build -j4
+ctest --test-dir build --output-on-failure --no-tests=error
 npm install --prefix build/browser --save-exact playwright@1.62.1
+mkdir -p build/benchmarks/browser
+{
+  date -Is
+  uname -a
+  cat /etc/os-release
+  lscpu
+  clang --version
+  cmake --version
+  node --version
+  /usr/bin/chromium --version
+  git rev-parse HEAD
+  git status --porcelain
+  cat /sys/devices/system/cpu/cpufreq/policy*/scaling_governor
+  cat /sys/class/thermal/thermal_zone*/type /sys/class/thermal/thermal_zone*/temp
+} > build/benchmarks/browser/rk3588-environment.txt 2>&1
 
-# System Chromium on RK3588: no downloaded x86 browser, no SwiftShader flags.
+# System Chromium on RK3588: no downloaded x86 browser or forced software renderer.
 node tools/benchmarks/browser/run.mjs --chromium /usr/bin/chromium --headed \
   --scene moving --seconds 30 --trials 3 \
   --output build/benchmarks/browser/rk3588-moving.json
@@ -42,6 +71,10 @@ context attributes, architecture, kernel, commit/dirty state and host SHA-256.
 Use `--no-sandbox` only in a deliberately isolated root container that cannot run
 the Chromium sandbox. Default launches enable the sandbox. An existing Playwright
 installation can be selected using `IMGUI_BENCH_PLAYWRIGHT=/absolute/module/path`.
+
+Playwright's Chromium defaults may enable SwiftShader fallback; choosing a system
+binary or `--headed` alone does not prove hardware rendering. Inspect the recorded
+unmasked renderer and driver evidence before accepting any board GPU claim.
 
 The harness owns UDP 19443, an ephemeral loopback HTTP port, fresh 13-day ECDSA
 credentials, a random token, the native process and the browser. Run sequentially;
@@ -165,3 +198,38 @@ marker extraction, supersession and disjoint invalidation. Those are correctness
 tests, not browser latency measurements. `benchmark_clock.py` runs the real host
 without TLS/clients to verify replies and shutdown with stdin still open; it also
 works with `IMGUI_QUIC_NATIVE_QUIC=OFF` for core-only testing.
+
+## Minimum board acceptance and CI evidence
+
+The x86-64 CI job builds the real QUICHE host, launches Chromium, runs both
+scenes for five seconds each, and uploads raw JSON plus the environment as
+`chromium-acceptance-<commit>`, including failed reports. This is a functional
+smoke test. Its software/headless renderer cannot validate RK3588 GPU or display
+performance. ARM CI compiles/tests the native transport but does not represent an
+RK3588 graphics stack.
+
+For minimum RK3588 acceptance, retain both 30-second, three-trial JSON files and
+the environment file. Each of the six trials must PASS the default gates: at
+least 720 frames, at least 24 FPS, ordered complete stages, no recovery/transport/
+WebGL errors, clock interval half-width at most 5 ms, and CPU submit p95 at most
+16.7 ms. These are initial instrumented-workload budgets, not previously measured
+board guarantees. Inspect all raw clock probes, metric sample counts, nulls,
+GPU statuses and supersession counts. A zero-sample metric is unavailable.
+
+Also record the active display mode/refresh and graphics driver version using
+the board's desktop/driver tools (`xrandr --current` or `wayland-info`, and the
+vendor driver package/module version); the JSON GL renderer alone is insufficient
+to prove which kernel/userspace driver is active. Reject SwiftShader/llvmpipe
+results for hardware GPU claims. GPU acceptance additionally requires a verified
+hardware renderer, timer support, no disjoint event, and nonzero measured GPU
+samples. Unsupported or disjoint timers allow CPU/transport acceptance only.
+
+RAF callback time, second-RAF opportunity, GPU elapsed time and actual display
+latency remain separate. Physical display acceptance still requires external
+measurement or a validated presentation trace with frame attribution. Preserve
+each failing JSON and its command/exit code; do not replace it with a simulated
+result or increase clock allowances to obtain PASS.
+
+`node tests/browser/benchmark_cli.mjs` verifies machine-readable FAIL reports and
+exit code 1 for invalid arguments and a missing host. Missing stage timestamps
+remain null in duration summaries; they do not create zero-duration samples.

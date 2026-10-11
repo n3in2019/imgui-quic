@@ -49,10 +49,10 @@ export function summarize(snapshot, probes, options) {
             if (r.generation_to_receive_upper_ms < 0) failures.push('generation after receipt outside error bound');
         } catch (e) { failures.push(e.message); }
     }
-    const durationMs = snapshot.stop_ms-snapshot.start_ms;
-    if (![snapshot.start_ms,snapshot.stop_ms].every(Number.isFinite) || durationMs <= 0)
-        failures.push('invalid measurement duration');
-    const fps = durationMs > 0 ? rows.length*1000/durationMs : 0;
+    const durationMs = [snapshot.start_ms,snapshot.stop_ms].every(Number.isFinite) &&
+        snapshot.stop_ms > snapshot.start_ms ? snapshot.stop_ms-snapshot.start_ms : null;
+    if (durationMs === null) failures.push('invalid measurement duration');
+    const fps = durationMs === null ? null : rows.length*1000/durationMs;
     if (options.minFps !== undefined && fps < options.minFps) failures.push('throughput budget');
     const stats = values => ({n: values.filter(Number.isFinite).length,
         p50: percentile(values,.5), p95: percentile(values,.95), max: percentile(values,1)});

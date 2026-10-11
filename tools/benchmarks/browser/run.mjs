@@ -162,13 +162,13 @@ async function trial(chromium, index) {
     return result;
 }
 try {
-    const require = createRequire(import.meta.url);
     if(argumentError) throw argumentError;
-    const candidate = process.env.IMGUI_BENCH_PLAYWRIGHT || resolve(root,'build/browser/node_modules/playwright');
-    const {chromium} = require(existsSync(candidate) ? candidate : 'playwright');
     report.environment.commit=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
     report.environment.dirty=!!execFileSync('git',['status','--porcelain'],{cwd:root,encoding:'utf8'}).trim();
     report.environment.host_sha256=createHash('sha256').update(await readFile(resolve(args.host))).digest('hex');
+    const require = createRequire(import.meta.url);
+    const candidate = process.env.IMGUI_BENCH_PLAYWRIGHT || resolve(root,'build/browser/node_modules/playwright');
+    const {chromium} = require(existsSync(candidate) ? candidate : 'playwright');
     for(let i=0;i<trials;i++) report.trials.push(await trial(chromium,i+1));
     report.status=report.trials.every(t=>t.status==='PASS')?'PASS':'FAIL';
 } catch(e) {report.failure=cleanError(e);}

@@ -15,6 +15,7 @@ try {
         assert.equal(report.status,'FAIL');
         assert.equal(typeof report.failure,'string');
         assert.ok(report.failure.length>0);
+        if(name==='missing-host') assert.match(report.failure,/ENOENT/);
         assert.deepEqual(report.trials,[]);
     }
     console.log('benchmark CLI: invalid options and missing host emit FAIL JSON and exit 1 PASS');

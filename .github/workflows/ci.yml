@@ -63,9 +63,28 @@ jobs:
           npm install --prefix build/browser --save-exact playwright@1.62.1
           node build/browser/node_modules/playwright/cli.js install --with-deps chromium
 
-      - name: Run real Chromium WebTransport and WebGL acceptance
+      - name: Allow only the installed Chromium executables to use their sandbox
         if: matrix.runner == 'ubuntu-24.04'
         run: |
+          python3 - <<'PY' > "$RUNNER_TEMP/imgui-benchmark-chromium"
+          from pathlib import Path
+          root = Path.home() / '.cache/ms-playwright'
+          binaries = sorted(p.resolve() for p in root.rglob('*')
+                            if p.is_file() and p.name in ('chrome', 'chrome-headless-shell'))
+          if not binaries:
+              raise SystemExit('Chromium executables not found')
+          print('abi <abi/4.0>,\ninclude <tunables/global>')
+          for i, binary in enumerate(binaries):
+              print(f'profile imgui-benchmark-chromium-{i} "{binary}" flags=(unconfined) {{\n  userns,\n}}')
+          PY
+          sudo install -o root -g root -m 0644 "$RUNNER_TEMP/imgui-benchmark-chromium" /etc/apparmor.d/imgui-benchmark-chromium
+          sudo apparmor_parser -r /etc/apparmor.d/imgui-benchmark-chromium
+
+      - name: Run real Chromium WebTransport and WebGL acceptance
+        if: matrix.runner == 'ubuntu-24.04'
+        shell: bash
+        run: |
+          set -o pipefail
           mkdir -p build/benchmarks/browser/ci
           {
             uname -a
@@ -82,6 +101,14 @@ jobs:
               --output "build/benchmarks/browser/ci/$scene.json" \
               2>&1 | tee "build/benchmarks/browser/ci/$scene.log" || status=1
           done
+          node - <<'JS'
+          const fs=require('node:fs');
+          for(const scene of ['moving','dynamic']) {
+            const report=JSON.parse(fs.readFileSync(`build/benchmarks/browser/ci/${scene}.json`));
+            if(report.status!=='PASS' || report.trials.length!==1 || report.trials[0].frames<120)
+              throw Error(`${scene}: real-browser acceptance did not pass`);
+          }
+          JS
           exit "$status"
 
       - name: Preserve browser acceptance JSON and environment
