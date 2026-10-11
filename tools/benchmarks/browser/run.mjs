@@ -12,7 +12,8 @@ import {fileURLToPath} from 'node:url';
 import {parseArgs} from 'node:util';
 import {summarize} from './metrics.mjs';
 const here = dirname(fileURLToPath(import.meta.url)), root = resolve(here,'../../..');
-const {values: args} = parseArgs({options: {
+let args, argumentError;
+try { ({values: args} = parseArgs({options: {
     host:{type:'string',default:'build/transport_benchmark_host'},
     chromium:{type:'string'}, headed:{type:'boolean',default:false},
     seconds:{type:'string',default:'12'}, trials:{type:'string',default:'3'},
@@ -22,7 +23,13 @@ const {values: args} = parseArgs({options: {
     'max-submit-ms':{type:'string',default:'16.7'}, 'max-proxy-ms':{type:'string'},
     'drift-ppm':{type:'string',default:'100'}, 'resolution-ms':{type:'string',default:'1'},
     'no-sandbox':{type:'boolean',default:false}
-}});
+}})); } catch(e) {
+    argumentError=e;
+    // Preserve the requested report destination even when strict parsing fails.
+    const argv=process.argv.slice(2), index=argv.indexOf('--output');
+    args={output:index>=0 && argv[index+1] && !argv[index+1].startsWith('--') ? argv[index+1] :
+        argv.find(x=>x.startsWith('--output='))?.slice(9) || 'build/benchmarks/browser/results.json'};
+}
 const seconds = Number(args.seconds), trials = Number(args.trials), fps = Number(args.fps);
 const options = {minFps:fps*.8,minFrames:Math.max(10,Math.floor(seconds*fps*.8)),
     maxUncertaintyMs:Number(args['max-uncertainty-ms']), maxSubmitMs:Number(args['max-submit-ms']),
@@ -30,7 +37,7 @@ const options = {minFps:fps*.8,minFrames:Math.max(10,Math.floor(seconds*fps*.8))
     driftPpm:Number(args['drift-ppm']), resolutionMs:Number(args['resolution-ms'])};
 if (![seconds,trials,fps,...Object.values(options).filter(x=>x!==null)].every(x=>Number.isFinite(x)&&x>=0) ||
     seconds < 1 || seconds > 300 || trials < 1 || trials > 20 || !Number.isInteger(trials) || fps < 1 || fps > 120 ||
-    !['moving','dynamic'].includes(args.scene)) throw Error('invalid benchmark options');
+    !['moving','dynamic'].includes(args.scene)) argumentError ||= Error('invalid benchmark options');
 const output = resolve(args.output);
 const report = {schema_version:1, status:'FAIL', scope:'local Chromium + native host on the same machine',
     environment:{arch:arch(),kernel:release(),node:process.version,headless:!args.headed},
@@ -39,12 +46,13 @@ const report = {schema_version:1, status:'FAIL', scope:'local Chromium + native 
         next_raf:'display-opportunity proxy only; no proof of scanout or presentation',
         clock:'interval bound conditional on configured drift and timer-resolution allowances'}, trials:[]};
 let token = '';
+report.environment.command=[process.execPath,...process.argv.slice(1)];
 const cleanError = e => String(e.message || e).replaceAll(token || '___no_token___','[redacted]').replace(/#wt-[^\s]*/g,'#[redacted]');
 const delay = ms => new Promise(r=>setTimeout(r,ms));
 async function trial(chromium, index) {
     const dir = await mkdtemp(resolve(tmpdir(),'imgui-browser-'));
     let host, browser, server, reader, pending, stderr='';
-    const clocks = [], result = {index,status:'FAIL'};
+    const clocks = [], result = {index,status:'FAIL',phase:'credentials'};
     try {
         token = randomBytes(24).toString('hex');
         await writeFile(resolve(dir,'token'),token,{mode:0o600});
@@ -81,6 +89,7 @@ async function trial(chromium, index) {
         const env = Object.fromEntries(Object.entries(process.env).filter(([key])=>!key.startsWith('IMGUI_QUIC_')&&!key.startsWith('IMGW_BENCH_')));
         Object.assign(env,{IMGUI_QUIC_CERT:resolve(dir,'cert.pem'),IMGUI_QUIC_KEY:resolve(dir,'key.pem'),
             IMGUI_QUIC_TOKEN_FILE:resolve(dir,'token'),IMGUI_QUIC_ORIGINS:origin,IMGW_BENCH_CLOCK_STDIO:'1'});
+        result.phase='native_start';
         host = spawn(resolve(args.host),[args.scene,args.fps],{env,stdio:['pipe','pipe','pipe']});
         host.on('error',e=>{pending?.reject(e);pending=null;});
         host.stdin.on('error',e=>{pending?.reject(e);pending=null;});
@@ -89,14 +98,19 @@ async function trial(chromium, index) {
         reader=createInterface({input:host.stdout});
         reader.on('line',line=>{if (/^\d+$/.test(line)&&pending) {const p=pending;pending=null;p.accept(line);}});
         await probe(); // Initialization and side-channel readiness, bounded by timeout.
+        result.phase='chromium_launch';
         browser = await chromium.launch({headless:!args.headed,executablePath:args.chromium,
             args:args['no-sandbox'] ? ['--no-sandbox'] : [], chromiumSandbox:!args['no-sandbox']});
         result.browser_version=browser.version();
         const page=await browser.newPage({viewport:{width:1280,height:720},deviceScaleFactor:1});
         const pageErrors=[];
+        const diagnostics=[];
         page.on('pageerror',e=>pageErrors.push(cleanError(e)));
+        page.on('console',msg=>{if(msg.type()==='error') diagnostics.push(cleanError(msg.text()));});
+        result.browser_errors=diagnostics;
         await page.addInitScript({path:resolve(here,'observer.js')});
         const fragment=new URLSearchParams({'wt-url':'https://127.0.0.1:19443/wt','wt-token':token,'wt-cert':pin,'draw-precision':'exact'});
+        result.phase='webtransport_connect';
         await page.goto(`${origin}/#${fragment}`,{waitUntil:'load',timeout:15000});
         await page.waitForFunction(()=>document.querySelector('#status')?.className==='connected',{},{timeout:20000});
         await delay(1000);
@@ -114,7 +128,9 @@ async function trial(chromium, index) {
                 return {start_ms,end_ms:performance.now(),native_ns};
             }));
         }
+        result.phase='clock_calibration';
         await calibrate(12);
+        result.phase='measurement';
         await page.evaluate(()=>window.ImGuiBenchmark.start());
         const start=performance.now();
         while(performance.now()-start < seconds*1000) {
@@ -127,9 +143,12 @@ async function trial(chromium, index) {
         const snapshot=await page.evaluate(()=>window.ImGuiBenchmark.snapshot(document.querySelector('canvas').getContext('webgl')));
         snapshot.errors.push(...pageErrors);
         if(host.exitCode!==null) snapshot.errors.push('native host exited');
+        result.phase='summary';
         Object.assign(result,summarize(snapshot,clocks,options),{clock_probes:clocks,samples:snapshot});
     } catch(e) {result.status='FAIL';result.failures=[cleanError(e)];result.native_stderr=cleanError(stderr);}
     finally {
+        result.clock_probes=clocks;
+        result.native_exit={code:host?.exitCode ?? null,signal:host?.signalCode ?? null};
         await browser?.close();
         if(host && host.exitCode===null) {
             host.kill('SIGTERM');
@@ -144,6 +163,7 @@ async function trial(chromium, index) {
 }
 try {
     const require = createRequire(import.meta.url);
+    if(argumentError) throw argumentError;
     const candidate = process.env.IMGUI_BENCH_PLAYWRIGHT || resolve(root,'build/browser/node_modules/playwright');
     const {chromium} = require(existsSync(candidate) ? candidate : 'playwright');
     report.environment.commit=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();

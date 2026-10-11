@@ -24,6 +24,13 @@ assert.equal(summarize({...snap,rows:[row,{...row}]},[probe],opt).status,'FAIL')
 assert.equal(summarize(snap,[probe],{...opt,maxUncertaintyMs:1}).status,'FAIL');
 assert.equal(summarize({...snap,rows:[{...row,next_raf_proxy_ms:null}]},[probe],opt).status,'FAIL');
 assert.equal(summarize({...snap,rows:[{...row,native_ns:'1000200000000'}]},[probe],opt).status,'FAIL');
+const incomplete=summarize({...snap,rows:[{...row,submit_start_ms:null,submit_end_ms:null}]},[probe],opt);
+assert.equal(incomplete.status,'FAIL');
+assert.deepEqual(incomplete.metrics.cpu_submit_ms,{n:0,p50:null,p95:null,max:null});
+assert.equal(incomplete.metrics.parse_and_prepare_ms.n,0);
+assert.throws(()=>clockInterval([{...probe,start_ms:-Infinity}],110),/invalid/);
+assert.throws(()=>clockInterval([probe],NaN),/invalid/);
+assert.equal(summarize({...snap,start_ms:null},[probe],opt).status,'FAIL');
 // Real observer callbacks with a deterministic browser/GL double, not performance evidence.
 let now=100, disjoint=false;
 const raf=[],deleted=[];

@@ -34,7 +34,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y clang libicu-dev libssl-dev python3-venv
 
       - name: Configure C++ core (fetches pinned Dear ImGui)
-        run: cmake -B build -DIMGUI_QUIC_BUILD_EXAMPLES=ON -DIMGUI_QUIC_BUILD_TESTS=ON
+        run: cmake -B build -DIMGUI_QUIC_BUILD_EXAMPLES=ON -DIMGUI_QUIC_BUILD_TESTS=ON -DIMGUI_QUIC_BUILD_BENCHMARKS=ON
 
       - name: Build C++ core and example
         run: cmake --build build --parallel
@@ -53,6 +53,44 @@ jobs:
           node tests/browser/clipboard_shortcuts.mjs
           node tests/browser/large_clipboard_batch.mjs
           node tests/browser/media_viewer.mjs
+          node tests/browser/benchmark.mjs
+          node tests/browser/benchmark_cli.mjs
+          python3 tests/browser/benchmark_clock.py build/transport_benchmark_host
+
+      - name: Install real Chromium for browser acceptance
+        if: matrix.runner == 'ubuntu-24.04'
+        run: |
+          npm install --prefix build/browser --save-exact playwright@1.62.1
+          node build/browser/node_modules/playwright/cli.js install --with-deps chromium
+
+      - name: Run real Chromium WebTransport and WebGL acceptance
+        if: matrix.runner == 'ubuntu-24.04'
+        run: |
+          mkdir -p build/benchmarks/browser/ci
+          {
+            uname -a
+            cat /etc/os-release
+            lscpu
+            cmake --version
+            clang --version
+            node --version
+            git rev-parse HEAD
+          } > build/benchmarks/browser/ci/environment.txt
+          status=0
+          for scene in moving dynamic; do
+            node tools/benchmarks/browser/run.mjs --scene "$scene" --seconds 5 --trials 1 \
+              --output "build/benchmarks/browser/ci/$scene.json" \
+              2>&1 | tee "build/benchmarks/browser/ci/$scene.log" || status=1
+          done
+          exit "$status"
+
+      - name: Preserve browser acceptance JSON and environment
+        if: always() && matrix.runner == 'ubuntu-24.04'
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-acceptance-${{ github.sha }}
+          path: build/benchmarks/browser/ci/
+          if-no-files-found: warn
 
       - name: Test native WebTransport
         run: |

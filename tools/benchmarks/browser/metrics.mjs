@@ -5,10 +5,14 @@ export function percentile(values, p) {
 }
 export function clockInterval(probes, at, driftPpm = 100, resolutionMs = 1) {
     if (!probes.length) throw Error('no clock probes');
+    if (![at,driftPpm,resolutionMs].every(Number.isFinite) || driftPpm < 0 || resolutionMs < 0)
+        throw Error('invalid clock endpoint or allowances');
     let low = -Infinity, high = Infinity;
     for (const p of probes) {
-        if (!(p.end_ms >= p.start_ms) || !/^\d+$/.test(p.native_ns)) throw Error('invalid clock probe');
+        if (![p.start_ms,p.end_ms].every(Number.isFinite) || !(p.end_ms >= p.start_ms) ||
+            typeof p.native_ns !== 'string' || !/^\d+$/.test(p.native_ns)) throw Error('invalid clock probe');
         const native = Number(BigInt(p.native_ns)) / 1e6;
+        if (!Number.isFinite(native)) throw Error('invalid clock probe');
         const drift = Math.max(Math.abs(at-p.start_ms), Math.abs(at-p.end_ms))*driftPpm/1e6;
         low = Math.max(low, p.start_ms-native-resolutionMs-drift);
         high = Math.min(high, p.end_ms-native+resolutionMs+drift);
@@ -22,7 +26,7 @@ export function summarize(snapshot, probes, options) {
     if (rows.length < options.minFrames) failures.push('insufficient frames');
     let previous = 0;
     for (const r of rows) {
-        if (r.id <= previous) failures.push('nonmonotonic frame ID');
+        if (!Number.isInteger(r.id) || r.id <= previous) failures.push('nonmonotonic frame ID');
         previous = r.id;
         if (![r.receive_ms,r.decode_start_ms,r.decode_end_ms,r.submit_start_ms,r.submit_end_ms,
             r.raf_callback_ms,r.next_raf_proxy_ms].every(Number.isFinite)) failures.push('incomplete sample');
@@ -46,16 +50,21 @@ export function summarize(snapshot, probes, options) {
         } catch (e) { failures.push(e.message); }
     }
     const durationMs = snapshot.stop_ms-snapshot.start_ms;
+    if (![snapshot.start_ms,snapshot.stop_ms].every(Number.isFinite) || durationMs <= 0)
+        failures.push('invalid measurement duration');
     const fps = durationMs > 0 ? rows.length*1000/durationMs : 0;
     if (options.minFps !== undefined && fps < options.minFps) failures.push('throughput budget');
     const stats = values => ({n: values.filter(Number.isFinite).length,
         p50: percentile(values,.5), p95: percentile(values,.95), max: percentile(values,1)});
+    // Null timestamps must remain missing, rather than being coerced to zero by subtraction.
+    const durations = (end,start) => stats(rows.map(r=>
+        Number.isFinite(r[end]) && Number.isFinite(r[start]) ? r[end]-r[start] : null));
     const metrics = {
-        receive_to_decode_start_ms: stats(rows.map(r=>r.decode_start_ms-r.receive_ms)),
-        submit_to_raf_callback_ms: stats(rows.map(r=>r.raf_callback_ms-r.submit_end_ms)),
-        decode_ms: stats(rows.map(r=>r.decode_end_ms-r.decode_start_ms)),
-        parse_and_prepare_ms: stats(rows.map(r=>r.submit_start_ms-r.decode_end_ms)),
-        cpu_submit_ms: stats(rows.map(r=>r.submit_end_ms-r.submit_start_ms)),
+        receive_to_decode_start_ms: durations('decode_start_ms','receive_ms'),
+        submit_to_raf_callback_ms: durations('raf_callback_ms','submit_end_ms'),
+        decode_ms: durations('decode_end_ms','decode_start_ms'),
+        parse_and_prepare_ms: durations('submit_start_ms','decode_end_ms'),
+        cpu_submit_ms: durations('submit_end_ms','submit_start_ms'),
         gpu_elapsed_ms: stats(rows.map(r=>r.gpu_elapsed_ms)),
         generation_to_receive_ms: stats(rows.map(r=>r.generation_to_receive_ms)),
         generation_to_submit_ms: stats(rows.map(r=>r.generation_to_submit_ms)),
