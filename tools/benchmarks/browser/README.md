@@ -33,6 +33,7 @@ From the repository root:
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
   -DIMGUI_QUIC_NATIVE_QUIC=ON -DIMGUI_QUIC_BUILD_BENCHMARKS=ON \
+  -DIMGUI_QUIC_QUICHE_JOBS=4 \
   -DIMGUI_QUIC_BUILD_TESTS=ON -DIMGUI_QUIC_BUILD_EXAMPLES=ON
 cmake --build build -j4
 ctest --test-dir build --output-on-failure --no-tests=error
