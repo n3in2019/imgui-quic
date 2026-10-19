@@ -444,16 +444,17 @@ function connect() {
         return;
     }
     connection.binaryType = "arraybuffer";
+    const transportLabel = connection.label || "WebTransport";
 
     connection.onopen = () => {
-        statusEl.textContent = "negotiating (WebTransport)...";
+        statusEl.textContent = `negotiating (${transportLabel})...`;
     };
 
     connection.onclose = () => {
         window.ImGuiBenchmark?.error("transport closed");
         clientId = 0;
         pendingSends = [];
-        statusEl.textContent = "WebTransport disconnected - retrying...";
+        statusEl.textContent = `${transportLabel} disconnected - retrying...`;
         statusEl.className = "disconnected";
         setTimeout(connect, reconnectDelay);
         reconnectDelay = Math.min(reconnectDelay * 2, 15000);
@@ -485,7 +486,7 @@ function connect() {
                     connection.close(1002, "I/P draw transport required");
                     return;
                 }
-                statusEl.textContent = "connected (WebTransport)";
+                statusEl.textContent = `connected (${transportLabel})`;
                 statusEl.className = "connected";
                 console.log("[imgui_quic]", statusEl.textContent);
                 reconnectDelay = 1000;

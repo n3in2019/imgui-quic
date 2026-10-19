@@ -4,6 +4,7 @@
 #include "core.hpp"
 #include "draw_protocol.hpp"
 #include "quic.hpp"
+#include "webrtc.hpp"
 
 #include <string.h>
 
@@ -26,6 +27,7 @@ namespace {
 struct GlobalCtx {
     std::shared_ptr<State> state;
     std::shared_ptr<QuicHandle> quic;
+    std::shared_ptr<WebRtcHandle> webrtc;
     uint64_t next_app_texture_id = UINT64_C(2147483648);
 };
 
@@ -274,11 +276,22 @@ extern "C" int imgui_quic_start(const imgui_quic_transport_config_t* config) {
     try {
         std::lock_guard<std::mutex> lock(imgui_quic_core::g_mutex);
         auto* g=imgui_quic_core::g_global.get();
-        if(!g || !imgui_quic_core::g_initialized.load() || g->quic)return -1;
+        if(!g || !imgui_quic_core::g_initialized.load() || g->quic || g->webrtc)return -1;
         g->quic=imgui_quic_core::start_quic(g->state,*config);
         if(!g->quic)return -2;
         return 0;
     }catch(...){return -3;}
+}
+
+extern "C" int imgui_quic_start_webrtc(const imgui_quic_webrtc_config_t* config) {
+    if (!config) return -1;
+    try {
+        std::lock_guard<std::mutex> lock(imgui_quic_core::g_mutex);
+        auto* g = imgui_quic_core::g_global.get();
+        if (!g || !imgui_quic_core::g_initialized.load() || g->quic || g->webrtc) return -1;
+        g->webrtc = imgui_quic_core::start_webrtc(g->state, *config);
+        return g->webrtc ? 0 : -2;
+    } catch (...) { return -3; }
 }
 
 extern "C" void imgui_quic_shutdown() {

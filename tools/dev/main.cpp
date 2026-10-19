@@ -23,6 +23,7 @@ void write(const fs::path& p, const std::string& text) {
     if (!out) throw std::runtime_error("Cannot write " + p.string());
 }
 #include "credentials.hpp"
+#include <openssl/rand.h>
 
 std::string escape(const std::string& s) {
     const char* hex = "0123456789ABCDEF"; std::string out;
@@ -35,14 +36,16 @@ std::string escape(const std::string& s) {
 
 int main(int argc, char** argv) try {
     std::map<std::string,std::string> options{{"--example","demo"},{"--build-directory","build"},
-        {"--credentials","build/webtransport_dev"},{"--page-url","http://127.0.0.1:8888/"},{"--quic-port","4433"},{"--address","127.0.0.1"},{"--port","4433"},{"--frontend","frontend"}};
+        {"--credentials","build/webtransport_dev"},{"--page-url","http://127.0.0.1:8888/"},{"--quic-port","4433"},{"--address","127.0.0.1"},{"--port","4433"},{"--frontend","frontend"},
+        {"--transport","webtransport"},{"--signal-port","4434"},{"--executable",""}};
     bool prepare = false, external = false;
     for (int i=1;i<argc;++i) {
         std::string key=argv[i];
         if (key=="--prepare-only") { prepare=true; continue; }
         if (key=="--help") {
             std::cout << "imgui_quic_dev [--example minimal|demo] [--build-directory build] [--credentials directory]\n"
-                         "  [--address 127.0.0.1] [--port 4433] [--frontend frontend] [--prepare-only]\n  [--page-url URL (external frontend)]\n"; return 0;
+                         "  [--address 127.0.0.1] [--port 4433] [--frontend frontend] [--prepare-only]\n"
+                         "  [--transport webtransport|webrtc] [--signal-port 4434] [--executable path]\n  [--page-url URL (external frontend)]\n"; return 0;
         }
         if (!options.count(key) || i+1==argc) throw std::runtime_error("Invalid option: "+key);
         options[key]=argv[++i];
@@ -61,11 +64,48 @@ int main(int argc, char** argv) try {
     if (options["--example"]!="demo" && options["--example"]!="minimal") throw std::runtime_error("Invalid example");
     auto native=fs::absolute(fs::path(options["--build-directory"])/"examples"/
         (options["--example"]=="minimal"?"example_minimal":"example_core_cpp_draw"));
+    if (!options["--executable"].empty()) native=fs::absolute(options["--executable"]);
     if (!prepare && !fs::is_regular_file(native)) throw std::runtime_error("Build examples first: "+native.string());
     umask(0077);
     auto dir=fs::absolute(options["--credentials"]); fs::create_directories(dir);
     int lock=open((dir/".lock").c_str(),O_CREAT|O_RDWR|O_CLOEXEC,0600);
     if (lock<0 || flock(lock,LOCK_EX)<0) throw std::runtime_error("Cannot lock credentials");
+    if (options["--transport"] == "webrtc") {
+        size_t used = 0; const auto signal = std::stoi(options["--signal-port"], &used);
+        if (used != options["--signal-port"].size() || signal < 1 || signal > 65535 || (!external && signal == port))
+            throw std::runtime_error("Invalid or conflicting signaling port");
+        const auto token = dir/"rtc-token";
+        if (!fs::exists(token)) {
+            unsigned char bytes[32];
+            if (RAND_bytes(bytes, sizeof(bytes)) != 1) throw std::runtime_error("Token generation failed");
+            const char* hex = "0123456789abcdef"; std::string secret;
+            for (auto byte : bytes) { secret += hex[byte>>4]; secret += hex[byte&15]; }
+            write(token, secret+"\n");
+        }
+        auto secret = read(token);
+        while (!secret.empty() && std::isspace(static_cast<unsigned char>(secret.back()))) secret.pop_back();
+        if (secret.size()<32 || secret.size()>256 || secret.find_first_not_of("0123456789abcdef") != std::string::npos)
+            throw std::runtime_error("Invalid WebRTC token");
+        const auto host = options["--address"] == "0.0.0.0" ? "127.0.0.1" : options["--address"];
+        write(dir/"url.txt", page+"#rtc-url="+escape("ws://"+host+":"+std::to_string(signal)+"/signal")+"&rtc-token="+secret+"\n");
+        std::cout << "Open the HTTP WebRTC connection URL in " << (dir/"url.txt") << ".\n" << std::flush;
+        if (prepare) return 0;
+        unsetenv("IMGUI_QUIC_CERT"); unsetenv("IMGUI_QUIC_KEY");
+        for (const auto& value : std::map<std::string,std::string>{{"IMGUI_QUIC_WEBRTC","1"},
+             {"IMGUI_QUIC_TOKEN_FILE",token.string()}, {"IMGUI_QUIC_HOST",options["--address"]},
+             {"IMGUI_QUIC_PORT",std::to_string(signal)}})
+            if (setenv(value.first.c_str(),value.second.c_str(),1)) throw std::runtime_error("setenv failed");
+        close(lock);
+        if (!external) {
+            const auto root=fs::canonical(options["--frontend"]);
+            if (!fs::is_regular_file(root/"index.html")) throw std::runtime_error("Frontend index.html not found");
+            return dev::run(dev::listen_http(options["--address"],port),root,native);
+        }
+        execl(native.c_str(),native.c_str(),static_cast<char*>(nullptr));
+        throw std::runtime_error("Cannot start native example");
+    }
+    if (options["--transport"] != "webtransport") throw std::runtime_error("Invalid transport");
+    unsetenv("IMGUI_QUIC_WEBRTC");
     auto cert=dir/"cert.pem", key=dir/"key.pem", token=dir/"token";
     int count=int(fs::exists(cert))+int(fs::exists(key))+int(fs::exists(token));
     if (count && count!=3) throw std::runtime_error("Incomplete credentials; restore or use a new directory");

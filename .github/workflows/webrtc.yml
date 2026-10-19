@@ -1,0 +1,70 @@
+name: HTTP WebRTC
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: webrtc-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  webrtc:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install compiler dependencies
+        run: sudo apt-get update && sudo apt-get install -y libssl-dev
+      - name: Build pinned WebRTC dependency
+        run: bash tools/webrtc/build-dependency.sh
+      - name: Build without QUICHE or HTTPS credentials
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DIMGUI_QUIC_NATIVE_QUIC=OFF \
+            -DIMGUI_QUIC_WEBRTC=ON -DCMAKE_PREFIX_PATH="$PWD/build/rtc-prefix" \
+            -DIMGUI_QUIC_BUILD_EXAMPLES=ON -DIMGUI_QUIC_BUILD_TESTS=ON
+          cmake --build build --parallel 4
+      - name: Run native and frontend contracts
+        run: |
+          ctest --test-dir build --output-on-failure --no-tests=error
+          for test in draw_ip compressed_draw planar_draw quantized_draw webtransport webrtc clipboard_shortcuts large_clipboard_batch media_viewer benchmark benchmark_cli; do
+            node "tests/browser/$test.mjs"
+          done
+          node --check frontend/imgui_quic_transport.js
+          git diff --check
+      - name: Install Chromium
+        if: matrix.runner == 'ubuntu-24.04'
+        run: |
+          npm install --prefix build/browser --save-exact playwright@1.62.1
+          node build/browser/node_modules/playwright/cli.js install --with-deps chromium
+      - name: Allow installed Chromium sandbox paths
+        if: matrix.runner == 'ubuntu-24.04'
+        run: |
+          python3 - <<'PY' > "$RUNNER_TEMP/imgui-webrtc-chromium"
+          from pathlib import Path
+          binaries=sorted(p.resolve() for p in (Path.home()/'.cache/ms-playwright').rglob('*')
+                          if p.is_file() and p.name in ('chrome','chrome-headless-shell'))
+          if not binaries: raise SystemExit('Chromium executables not found')
+          print('abi <abi/4.0>,\ninclude <tunables/global>')
+          for i,p in enumerate(binaries):
+              print(f'profile imgui-webrtc-chromium-{i} "{p}" flags=(unconfined) {{\n  userns,\n}}')
+          PY
+          sudo install -o root -g root -m 0644 "$RUNNER_TEMP/imgui-webrtc-chromium" /etc/apparmor.d/imgui-webrtc-chromium
+          sudo apparmor_parser -r /etc/apparmor.d/imgui-webrtc-chromium
+      - name: Real insecure-origin HTTP WebRTC and WebGL acceptance
+        if: matrix.runner == 'ubuntu-24.04'
+        run: node tests/browser/webrtc_e2e.mjs
+      - name: Preserve raw acceptance report
+        if: always() && matrix.runner == 'ubuntu-24.04'
+        uses: actions/upload-artifact@v4
+        with:
+          name: http-webrtc-${{ github.sha }}
+          path: build/webrtc-acceptance/
+          if-no-files-found: warn

@@ -197,10 +197,104 @@
             this.onclose?.({reason});
         }
     }
+    class WebRtcSocket extends MixedSocket {
+        write(bytes) {
+            if (bytes.length > 1024*1024) { this.fail("WebRTC input record budget"); return; }
+            super.write(bytes);
+        }
+        async start() {
+            this.label = "WebRTC";
+            try {
+                this.pc = new RTCPeerConnection({iceServers:[]});
+                this.ws = new WebSocket(this.config.url);
+                this.transport = {close:() => { this.ws.close(); this.pc.close(); clearTimeout(this.timeout); }};
+                this.timeout = setTimeout(() => this.fail("WebRTC connection timeout"), 20000);
+                const reliable = this.pc.createDataChannel("imgui-reliable", {ordered:true});
+                const motion = this.pc.createDataChannel("imgui-unreliable", {ordered:false,maxRetransmits:0});
+                this.reliable = reliable; this.unreliable = motion;
+                const parser = new Records();
+                const opened = () => {
+                    if (this.readyState === 3 || reliable.readyState !== "open" || motion.readyState !== "open") return;
+                    this.readyState = 1; clearTimeout(this.timeout); this.onopen?.({});
+                };
+                for (const channel of [reliable,motion]) {
+                    channel.binaryType = "arraybuffer";
+                    channel.onopen = opened;
+                    channel.onclose = () => this.fail("WebRTC data channel closed");
+                    channel.onerror = () => this.fail("WebRTC data channel failed");
+                    channel.onmessage = evt => {
+                        try {
+                            if (!(evt.data instanceof ArrayBuffer) || evt.data.byteLength > 16384) throw Error("WebRTC message size/type");
+                            const bytes = new Uint8Array(evt.data);
+                            if (channel === reliable) parser.feed(bytes, b => this.receiver.receive(b));
+                            else this.receiver.receive(bytes, true);
+                        } catch (_) { this.fail("WebRTC record rejected"); }
+                    };
+                }
+                this.writer = {write:async record => {
+                    for (let at=0;at<record.length;) {
+                        const deadline = performance.now()+10000;
+                        while (reliable.bufferedAmount >= 262144 && this.readyState !== 3) {
+                            if (performance.now() > deadline) throw Error("WebRTC send timeout");
+                            await new Promise(r=>setTimeout(r,5));
+                        }
+                        if (this.readyState === 3) return;
+                        const n = Math.min(16384, this.pc.sctp?.maxMessageSize || 16384, record.length-at);
+                        reliable.send(record.subarray(at,at+n)); at += n;
+                    }
+                }};
+                this.datagramWriter = {write:async bytes => {
+                    if (this.readyState === 1 && motion.bufferedAmount < 262144) motion.send(bytes);
+                }};
+                this.pc.onconnectionstatechange = () => {
+                    if (["failed","disconnected","closed"].includes(this.pc.connectionState)) this.fail("WebRTC disconnected");
+                };
+                this.ws.onclose = () => this.fail("WebRTC signaling closed");
+                this.ws.onerror = () => this.fail("WebRTC signaling failed");
+                this.ws.onmessage = async evt => {
+                    try {
+                        if (typeof evt.data !== "string" || evt.data.length > 65536 || this.answered) throw Error("invalid answer");
+                        const answer = JSON.parse(evt.data);
+                        if (answer.type !== "answer" || typeof answer.sdp !== "string") throw Error("invalid answer");
+                        this.answered = true;
+                        await this.pc.setRemoteDescription({type:"answer",sdp:answer.sdp});
+                    } catch (_) { this.fail("WebRTC answer rejected"); }
+                };
+                this.ws.onopen = async () => {
+                    try {
+                        await this.pc.setLocalDescription(await this.pc.createOffer());
+                        if (this.pc.iceGatheringState !== "complete") await new Promise((yes,no) => {
+                            const timer = setTimeout(()=>{this.pc.removeEventListener("icegatheringstatechange",check);no(Error("ICE timeout"));},10000);
+                            const check = () => { if (this.pc.iceGatheringState === "complete") {
+                                clearTimeout(timer); this.pc.removeEventListener("icegatheringstatechange",check); yes();
+                            }};
+                            this.pc.addEventListener("icegatheringstatechange",check); check();
+                        });
+                        if (this.readyState !== 3) this.ws.send(JSON.stringify({type:"offer",sdp:this.pc.localDescription.sdp,token:this.config.token}));
+                    } catch (_) { this.fail("WebRTC offer failed"); }
+                };
+            } catch (_) { this.fail("WebRTC initialization failed"); }
+        }
+        fail(reason = "WebRTC connection failed") {
+            clearTimeout(this.timeout);
+            super.fail(reason);
+            // Initialization may have failed before installing transport.close.
+            this.ws?.close(); this.pc?.close();
+        }
+    }
     function create() {
+        const params = new URLSearchParams(location.hash.slice(1));
+        if (params.has("rtc-url")) {
+            if (!globalThis.RTCPeerConnection) throw Error("This browser does not support WebRTC DataChannel");
+            const endpoint = new URL(params.get("rtc-url"));
+            const token = params.get("rtc-token");
+            if (!["ws:","wss:"].includes(endpoint.protocol) || endpoint.username || endpoint.password || endpoint.hash ||
+                endpoint.pathname !== "/signal" || endpoint.search || !token || !/^[!-~]{32,256}$/.test(token))
+                throw Error("Invalid WebRTC connection link");
+            return new WebRtcSocket({url:endpoint.href,token});
+        }
         if (!globalThis.WebTransport)
             throw Error("This browser does not support WebTransport in this context");
-        const params = new URLSearchParams(location.hash.slice(1));
         const url = params.get("wt-url"), token = params.get("wt-token");
         if (!url || !token)
             throw Error("Open a configured WebTransport connection link");
@@ -213,5 +307,5 @@
             throw Error("Invalid WebTransport certificate hash");
         return new MixedSocket({url:endpoint.href, token, certificateHash});
     }
-    window.ImGuiTransport = {create, Records, MixedReceiver, MixedSocket, splitMessages};
+    window.ImGuiTransport = {create, Records, MixedReceiver, MixedSocket, WebRtcSocket, splitMessages};
 })();

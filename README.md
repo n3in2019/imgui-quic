@@ -92,6 +92,11 @@ target_link_libraries(my_app PRIVATE imgui_quic::core)
 | `cmake/` | Dependency setup, QUIC build and package installation |
 | `tools/` | Launcher, binding generator, upstream maintenance and benchmarks |
 
+For a trusted LAN without HTTPS certificate setup, the optional
+[HTTP + WebRTC backend](tools/webrtc/README.md) serves an HTTP page and uses
+WebSocket signaling plus WebRTC DataChannels. Enable `IMGUI_QUIC_WEBRTC=ON` and
+launch with `--transport webrtc`. WebTransport remains the default backend.
+
 The data path is `ImGui → draw snapshot → acknowledged I/P encoder → QUIC →
 browser decoder → WebGL`. Input returns to the shared native context. Small
 P frames and pointer movement use datagrams; resources, critical input and large

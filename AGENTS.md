@@ -156,6 +156,16 @@ the by-value callback ABI. Keep the public lifecycle and QUIC APIs unchanged.
 
 ## Project entry points
 
+## Optional HTTP/WebRTC
+
+`tools/webrtc/README.md` documents the opt-in `IMGUI_QUIC_WEBRTC` backend.
+`src/webrtc.cpp` owns all session state on a joined worker; libdatachannel callbacks
+only enqueue bounded events through weak ownership. Preserve control barriers,
+epochs, pointer fences and render-before-ACK behavior across both channels.
+Run `node tests/browser/webrtc.mjs` and the real insecure-origin Chromium test
+`node tests/browser/webrtc_e2e.mjs` with the documented dependency build.
+No HTTPS setup is required, but plain signaling is for trusted networks only.
+
 `examples/minimal.cpp` is the starter; `example_draw.cpp` is the full regression
 demo. Both use example-only `support.hpp` for process setup. Launch with
 `build/examples/imgui_quic_dev --example minimal` or `--example demo`.

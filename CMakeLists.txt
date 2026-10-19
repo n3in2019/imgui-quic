@@ -17,6 +17,7 @@ add_library(imgui_quic_core_cpp
     src/draw_protocol.cpp
     src/state.cpp
     src/quic.cpp
+    src/webrtc.cpp
     src/lib.cpp
     # C++ convenience wrapper (Server + on_render).
     src/imgui_quic.cpp
@@ -52,6 +53,7 @@ target_compile_definitions(imgui_quic_core_cpp PUBLIC IMGUI_USER_CONFIG="imconfi
 target_link_libraries(imgui_quic_core_cpp PUBLIC Threads::Threads)
 
 include(cmake/NativeQuic.cmake)
+include(cmake/WebRtc.cmake)
 
 option(IMGUI_QUIC_BUILD_EXAMPLES "Build the C++ core examples" OFF)
 option(IMGUI_QUIC_BUILD_TESTS "Build the C++ core tests" OFF)
