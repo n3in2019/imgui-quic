@@ -82,7 +82,8 @@ struct Peer : std::enable_shared_from_this<Peer> {
     }
     ~Peer() { close(); }
     void offer(const std::string& bytes, const std::string& token, const std::string& bind) {
-        if (offered || bytes.size() > 65536) throw std::runtime_error("invalid offer");
+        if (offered || bytes.size() > 65536 || ws->path() != std::optional<std::string>("/signal"))
+            throw std::runtime_error("invalid offer");
         const auto json = Json::parse(bytes, [](int depth, Json::parse_event_t, Json&) {
             if (depth > 8) throw std::runtime_error("signaling nesting limit");
             return true;
@@ -310,8 +311,9 @@ struct WebRtcHandle {
             { std::lock_guard<std::mutex> lock(admissions->mutex); sockets.swap(admissions->sockets); }
             for (auto& ws : sockets) {
                 auto p = std::make_shared<Peer>(state, wake, std::move(ws));
-                if (p->ws->path() != std::optional<std::string>("/signal") ||
-                    std::count_if(peers.begin(), peers.end(), [&](auto& x) { return x->ip == p->ip; }) >= max_ip) {
+                // onClient runs before the HTTP upgrade; path() is not available yet.
+                // Validate the path on the first signaling message, after the upgrade.
+                if (std::count_if(peers.begin(), peers.end(), [&](auto& x) { return x->ip == p->ip; }) >= max_ip) {
                     p->close(); --admissions->count; continue;
                 }
                 p->install(); peers.push_back(std::move(p));
