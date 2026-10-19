@@ -98,3 +98,16 @@ const count=timers.length;
 vm.runInContext('connect()',ui);
 assert.equal(ui.statusEl.textContent,'configuration required');assert.equal(timers.length,count);
 console.log('WebTransport reconnect controller passed: bounded backoff, negotiation reset, configuration error');
+
+// Optional benchmark metadata is captured at complete-record delivery without
+// changing payload bytes, rejection rules, or ACK promotion.
+ctx.performance={now:()=>123.5};ctx.window.ImGuiBenchmark={};
+let measured;
+const meter=new MixedReceiver((bytes,receivedAt,path)=>{measured={bytes,receivedAt,path};},()=>{});
+meter.receive(frame(1),true);
+assert.equal(measured.receivedAt,123.5);assert.equal(measured.path,'datagram');
+assert.deepEqual([...measured.bytes],[...frame(1).slice(9)]);
+assert.equal(meter.frame,0); // observation never ACKs on receipt
+meter.receive(frame(2));assert.equal(measured.path,'stream');
+delete ctx.window.ImGuiBenchmark;
+console.log('WebTransport optional benchmark metadata preserves delivery/ACK semantics');
