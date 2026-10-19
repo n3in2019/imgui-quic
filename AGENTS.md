@@ -154,6 +154,16 @@ budgets immediately; the 100 ms watchdog is only the idle/deadline fallback.
 The bridge is private and symbol-versioned: update its ELF version when changing
 the by-value callback ABI. Keep the public lifecycle and QUIC APIs unchanged.
 
+## Optional HTTP/WebRTC
+
+`tools/webrtc/README.md` documents the opt-in `IMGUI_QUIC_WEBRTC` backend.
+`src/webrtc.cpp` owns all session state on a joined worker; libdatachannel callbacks
+only enqueue bounded events through weak ownership. Preserve control barriers,
+epochs, pointer fences and render-before-ACK behavior across both channels.
+Run `node tests/browser/webrtc.mjs` and the real insecure-origin Chromium test
+`node tests/browser/webrtc_e2e.mjs` with the documented dependency build.
+No HTTPS setup is required, but plain signaling is for trusted networks only.
+
 ## Project entry points
 
 `examples/minimal.cpp` is the starter; `example_draw.cpp` is the full regression

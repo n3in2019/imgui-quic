@@ -56,3 +56,8 @@ target_link_libraries(quantization_tests PRIVATE imgui_quic_core_cpp)
 target_include_directories(quantization_tests PRIVATE ../src)
 target_compile_options(quantization_tests PRIVATE -UNDEBUG)
 add_test(NAME quantization COMMAND quantization_tests)
+
+if(IMGUI_QUIC_WEBRTC)
+    add_executable(webrtc_acceptance_host webrtc/host.cpp)
+    target_link_libraries(webrtc_acceptance_host PRIVATE imgui_quic::core)
+endif()

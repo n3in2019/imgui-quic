@@ -3,6 +3,7 @@
 // Example-only process setup. Applications use the public lifecycle/QUIC APIs.
 #include "imgui_quic.hpp"
 #include "imgui_quic_transport.h"
+#include "imgui_quic_webrtc.h"
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
@@ -31,7 +32,8 @@ inline bool start(imgui_quic::Server& app, int argc, char** argv) {
         std::fprintf(stderr, "Configure QUIC using IMGUI_QUIC_* environment variables\n");
         return false;
     }
-    if (!std::getenv("IMGUI_QUIC_CERT")) {
+    const bool webrtc = std::getenv("IMGUI_QUIC_WEBRTC") != nullptr;
+    if (!webrtc && !std::getenv("IMGUI_QUIC_CERT")) {
         std::fprintf(stderr, "Missing QUIC credentials; use build/examples/imgui_quic_dev\n");
         return false;
     }
@@ -43,6 +45,13 @@ inline bool start(imgui_quic::Server& app, int argc, char** argv) {
     if (!app.init(config)) {
         std::fprintf(stderr, "Failed to initialize ImGuiQuic\n");
         return false;
+    }
+    if (webrtc) {
+        imgui_quic_webrtc_config_t rtc{};
+        rtc.host = config.address.c_str();
+        rtc.signaling_port = config.port;
+        rtc.token_file = std::getenv("IMGUI_QUIC_TOKEN_FILE");
+        if (imgui_quic_start_webrtc(&rtc)) return false;
     }
 
     return true;

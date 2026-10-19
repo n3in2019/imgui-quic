@@ -54,6 +54,15 @@ Redistribute that notice file with `libimgui_quic_quiche.so`.
 
 ## Development and benchmark dependencies
 
+The optional HTTP/WebRTC backend links libdatachannel 0.24.1 (MPL-2.0), pinned
+to `a02b751917ac8afc8c58dc6f4461d25ff9465d48`. Its data-only configuration uses
+libjuice (MPL-2.0), usrsctp (BSD-3-Clause), plog (MIT) and system OpenSSL.
+The adapter includes nlohmann/json (MIT) for signaling. The bootstrap script
+uses exact upstream submodule pins. Keep upstream licenses and applicable
+source-availability obligations when redistributing; do not treat these optional
+dependencies as covered by the core's MIT license. Upstream dependency notices
+are copied by the bootstrap script to `build/rtc-prefix/share/doc/imgui_quic/webrtc`.
+
 The optional C++ development launcher links system OpenSSL libcrypto to prepare
 local certificates; preserve the notices for the redistributed OpenSSL version.
 aioquic 1.3.0 (BSD-3-Clause) is an independent test and benchmark client and is not
